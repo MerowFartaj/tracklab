@@ -1,0 +1,53 @@
+# Build artifacts
+build/
+cmake-build-*/
+out/
+dist/
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dylib
+*.dll
+*.exe
+*.app
+*.ipa
+
+# CMake
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+compile_commands.json
+CTestTestfile.cmake
+Testing/
+
+# JUCE generated files
+JuceLibraryCode/
+Builds/
+
+# Xcode and macOS
+.DS_Store
+*.xcuserstate
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcscmblueprint
+DerivedData/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Local secrets and machine state
+.env
+.env.*
+*.local
+*.log
+*.tmp
+*.bak
+
+# Package manager caches
+.cache/
+.ccache/
