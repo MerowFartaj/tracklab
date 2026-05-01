@@ -52,6 +52,7 @@ struct AudioEngine::Impl
         }
 
         loadedLengthSeconds = info.getLengthInSeconds();
+        loadedFile = file;
 
         auto& transport = edit->getTransport();
         transport.setLoopRange (clip->getEditTimeRange());
@@ -92,6 +93,12 @@ struct AudioEngine::Impl
         transport.setPosition (tracktion::TimePosition());
     }
 
+    void setPositionSeconds (double seconds)
+    {
+        const auto clampedSeconds = juce::jlimit (0.0, loadedLengthSeconds, seconds);
+        edit->getTransport().setPosition (tracktion::TimePosition::fromSeconds (clampedSeconds));
+    }
+
     double getPositionSeconds() const
     {
         return edit->getTransport().getPosition().inSeconds();
@@ -119,6 +126,7 @@ struct AudioEngine::Impl
 
     te::Engine engine;
     std::unique_ptr<te::Edit> edit;
+    juce::File loadedFile;
     double loadedLengthSeconds = 0.0;
 };
 
@@ -149,6 +157,11 @@ void AudioEngine::stop()
     impl->stop();
 }
 
+void AudioEngine::setPositionSeconds (double seconds)
+{
+    impl->setPositionSeconds (seconds);
+}
+
 double AudioEngine::getPositionSeconds() const
 {
     return impl->getPositionSeconds();
@@ -157,6 +170,11 @@ double AudioEngine::getPositionSeconds() const
 double AudioEngine::getLengthSeconds() const
 {
     return impl->loadedLengthSeconds;
+}
+
+juce::File AudioEngine::getLoadedFile() const
+{
+    return impl->loadedFile;
 }
 
 bool AudioEngine::isPlaying() const

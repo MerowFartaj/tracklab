@@ -1,83 +1,56 @@
 #include "MainComponent.h"
 
+#include "DesignTokens.h"
+
+namespace tokens = tracklab::design;
+
 MainComponent::MainComponent()
 {
     audioEngine = std::make_unique<AudioEngine>();
+    timelineView = std::make_unique<TimelineView> (*audioEngine);
 
     setOpaque (true);
 
-    loadButton.onClick = [this] { loadAudioFile(); };
-    playButton.onClick = [this]
+    toolbar.onLoadClicked = [this]
     {
-        audioEngine->play();
-        updatePlaybackState();
+        loadAudioFile();
     };
-    pauseButton.onClick = [this]
+
+    toolbar.onPlayPauseClicked = [this]
     {
-        audioEngine->pause();
-        updatePlaybackState();
+        if (audioEngine->isPlaying())
+            audioEngine->pause();
+        else
+            audioEngine->play();
+
+        updateTransportState();
+        timelineView->refreshPlayhead();
     };
-    stopButton.onClick = [this]
+
+    toolbar.onStopClicked = [this]
     {
         audioEngine->stop();
-        updatePlaybackState();
+        updateTransportState();
+        timelineView->refreshPlayhead();
     };
 
-    for (auto* button : { &loadButton, &playButton, &pauseButton, &stopButton })
-    {
-        button->setColour (juce::TextButton::buttonColourId, juce::Colour::fromRGB (0x2a, 0x2a, 0x2a));
-        button->setColour (juce::TextButton::buttonOnColourId, juce::Colour::fromRGB (0x3a, 0x3a, 0x3a));
-        button->setColour (juce::TextButton::textColourOffId, juce::Colours::white);
-        button->setColour (juce::TextButton::textColourOnId, juce::Colours::white);
-        addAndMakeVisible (*button);
-    }
+    addAndMakeVisible (toolbar);
+    addAndMakeVisible (*timelineView);
 
-    positionLabel.setJustificationType (juce::Justification::centred);
-    positionLabel.setColour (juce::Label::textColourId, juce::Colours::white.withAlpha (0.82f));
-    addAndMakeVisible (positionLabel);
-
-    progressSlider.setRange (0.0, 1.0, 0.001);
-    progressSlider.setSliderStyle (juce::Slider::LinearHorizontal);
-    progressSlider.setTextBoxStyle (juce::Slider::NoTextBox, false, 0, 0);
-    progressSlider.setEnabled (false);
-    addAndMakeVisible (progressSlider);
-
-    playButton.setEnabled (false);
-    pauseButton.setEnabled (false);
-    stopButton.setEnabled (false);
-
-    updatePlaybackState();
+    updateTransportState();
     startTimerHz (30);
 }
 
 void MainComponent::paint (juce::Graphics& g)
 {
-    g.fillAll (juce::Colour::fromRGB (0x1a, 0x1a, 0x1a));
-
-    g.setColour (juce::Colours::white.withAlpha (0.92f));
-    g.setFont (juce::Font { juce::FontOptions { 48.0f, juce::Font::plain } });
-    g.drawText ("Tracklab", getLocalBounds().removeFromTop (240), juce::Justification::centred, false);
+    g.fillAll (tokens::backgroundBase);
 }
 
 void MainComponent::resized()
 {
     auto bounds = getLocalBounds();
-    auto controls = bounds.withSizeKeepingCentre (520, 220);
-
-    loadButton.setBounds (controls.removeFromTop (44));
-    controls.removeFromTop (18);
-
-    auto transportRow = controls.removeFromTop (44);
-    playButton.setBounds (transportRow.removeFromLeft (160));
-    transportRow.removeFromLeft (20);
-    pauseButton.setBounds (transportRow.removeFromLeft (160));
-    transportRow.removeFromLeft (20);
-    stopButton.setBounds (transportRow.removeFromLeft (160));
-
-    controls.removeFromTop (24);
-    positionLabel.setBounds (controls.removeFromTop (28));
-    controls.removeFromTop (12);
-    progressSlider.setBounds (controls.removeFromTop (32));
+    toolbar.setBounds (bounds.removeFromTop (tokens::toolbarHeight));
+    timelineView->setBounds (bounds);
 }
 
 void MainComponent::loadAudioFile()
@@ -119,18 +92,17 @@ void MainComponent::handleFileChosen (const juce::File& file)
     }
 
     hasLoadedFile = true;
-    loadButton.setButtonText ("Load different file");
-    updatePlaybackState();
+    timelineView->setAudioFile (file, audioEngine->getLengthSeconds());
+    updateTransportState();
 }
 
-void MainComponent::updatePlaybackState()
+void MainComponent::updateTransportState()
 {
     const auto length = audioEngine->getLengthSeconds();
     const auto rawPosition = audioEngine->getPositionSeconds();
-    const auto hasLength = length > 0.0;
     auto playing = audioEngine->isPlaying();
 
-    if (hasLength && playing && rawPosition >= length)
+    if (length > 0.0 && playing && rawPosition >= length)
     {
         audioEngine->pause();
         playing = false;
@@ -138,18 +110,14 @@ void MainComponent::updatePlaybackState()
 
     const auto position = juce::jlimit (0.0, length, rawPosition);
 
-    playButton.setEnabled (hasLoadedFile && ! playing);
-    pauseButton.setEnabled (hasLoadedFile && playing);
-    stopButton.setEnabled (hasLoadedFile);
-
-    positionLabel.setText (formatTime (position) + " / " + formatTime (length),
-                           juce::dontSendNotification);
-    progressSlider.setValue (hasLength ? position / length : 0.0, juce::dontSendNotification);
+    toolbar.setHasLoadedFile (hasLoadedFile);
+    toolbar.setPlaying (playing);
+    toolbar.setPosition (position, length);
 }
 
 void MainComponent::timerCallback()
 {
-    updatePlaybackState();
+    updateTransportState();
 }
 
 bool MainComponent::isSupportedFile (const juce::File& file)
@@ -160,13 +128,4 @@ bool MainComponent::isSupportedFile (const juce::File& file)
         || extension == ".aif"
         || extension == ".mp3"
         || extension == ".flac";
-}
-
-juce::String MainComponent::formatTime (double seconds)
-{
-    const auto totalSeconds = juce::jmax (0, juce::roundToInt (seconds));
-    const auto minutes = totalSeconds / 60;
-    const auto remainingSeconds = totalSeconds % 60;
-
-    return juce::String::formatted ("%d:%02d", minutes, remainingSeconds);
 }

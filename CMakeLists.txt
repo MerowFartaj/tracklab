@@ -44,10 +44,23 @@ juce_add_gui_app(tracklab_app
 target_sources(tracklab_app
     PRIVATE
         app/src/Main.cpp
+        app/src/AudioClipView.cpp
+        app/src/AudioClipView.h
+        app/src/DesignTokens.h
         app/src/MainComponent.cpp
         app/src/MainComponent.h
         app/src/MainWindow.cpp
         app/src/MainWindow.h
+        app/src/Playhead.cpp
+        app/src/Playhead.h
+        app/src/TimelineRuler.cpp
+        app/src/TimelineRuler.h
+        app/src/TimelineView.cpp
+        app/src/TimelineView.h
+        app/src/Toolbar.cpp
+        app/src/Toolbar.h
+        app/src/TrackRow.cpp
+        app/src/TrackRow.h
         engine/AudioEngine.cpp
         engine/AudioEngine.h)
 
@@ -55,10 +68,23 @@ source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/app/src
     PREFIX "App"
     FILES
         app/src/Main.cpp
+        app/src/AudioClipView.cpp
+        app/src/AudioClipView.h
+        app/src/DesignTokens.h
         app/src/MainComponent.cpp
         app/src/MainComponent.h
         app/src/MainWindow.cpp
-        app/src/MainWindow.h)
+        app/src/MainWindow.h
+        app/src/Playhead.cpp
+        app/src/Playhead.h
+        app/src/TimelineRuler.cpp
+        app/src/TimelineRuler.h
+        app/src/TimelineView.cpp
+        app/src/TimelineView.h
+        app/src/Toolbar.cpp
+        app/src/Toolbar.h
+        app/src/TrackRow.cpp
+        app/src/TrackRow.h)
 
 # Let app and UI code include project headers from the repository root.
 target_include_directories(tracklab_app
@@ -98,6 +124,7 @@ target_link_libraries(tracklab_app
         juce::juce_graphics
         juce::juce_gui_basics
         juce::juce_gui_extra
+        juce::juce_opengl
         tracktion::tracktion_core
         tracktion::tracktion_graph
         tracktion::tracktion_engine)

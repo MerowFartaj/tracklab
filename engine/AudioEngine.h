@@ -22,11 +22,17 @@ public:
     /** Stops playback and resets the transport to the start. */
     void stop();
 
+    /** Moves the transport to a position in seconds, clamped to the loaded file. */
+    void setPositionSeconds (double seconds);
+
     /** Returns the current transport position in seconds. */
     double getPositionSeconds() const;
 
     /** Returns the loaded file length in seconds. */
     double getLengthSeconds() const;
+
+    /** Returns the currently loaded audio file, or an empty file if none is loaded. */
+    juce::File getLoadedFile() const;
 
     /** Returns true while the Tracktion transport is playing. */
     bool isPlaying() const;

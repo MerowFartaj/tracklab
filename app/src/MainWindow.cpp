@@ -1,8 +1,10 @@
 #include "MainWindow.h"
 
+#include "DesignTokens.h"
+
 MainWindow::MainWindow()
     : DocumentWindow ("Tracklab",
-                      juce::Colour::fromRGB (0x1a, 0x1a, 0x1a),
+                      tracklab::design::backgroundBase,
                       DocumentWindow::allButtons)
 {
     setUsingNativeTitleBar (true);
