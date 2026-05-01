@@ -32,8 +32,12 @@ public:
     void duplicateSelectedClips();
     void selectAllClips();
     void deselectAllClips();
+    void splitSelectedClipsAtPlayhead();
+    int getPrimarySelectedClipId() const;
+    int getPrimarySelectedTrackId() const;
 
     std::function<void()> onProjectChanged;
+    std::function<void()> onSelectionChanged;
 
 private:
     class TimelineContent final : public juce::Component
@@ -55,6 +59,7 @@ private:
 
         std::function<void(double)> onSeek;
         std::function<void()> onDeselectAll;
+        std::function<void(int)> onTrackSelected;
         std::function<void()> onAddTrack;
         std::function<void(int, bool)> onClipSelected;
         std::function<void(int, float, float, bool)> onClipMoved;
@@ -105,12 +110,14 @@ private:
     void handleClipDuplicated (int clipId);
     void handleClipRenamed (int clipId, juce::String name);
     void updateTimelineLengthFromEngine();
+    void notifySelectionChanged();
 
     AudioEngine& audioEngine;
     juce::Viewport viewport;
     TimelineContent content;
     juce::OpenGLContext openGLContext;
     std::set<int> selectedClipIds;
+    int selectedTrackId = 0;
 
     double timelineLengthSeconds = tracklab::design::timelineEmptyLengthSeconds;
     double pixelsPerSecond = tracklab::design::timelineDefaultPixelsPerSecond;

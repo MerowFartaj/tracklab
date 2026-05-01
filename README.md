@@ -64,6 +64,7 @@ See [docs/CONNECTORS.md](docs/CONNECTORS.md) for the current connector design.
 Tracklab is in pre-alpha and active planning. The repository now contains a minimal JUCE desktop app scaffold with JUCE and Tracktion Engine integrated as submodules. DAW features have not been implemented yet.
 
 See [docs/ROADMAP.md](docs/ROADMAP.md) for planned milestones.
+See [docs/BASE_FEATURES.md](docs/BASE_FEATURES.md) for the Logic and Ableton inspired base DAW feature map.
 
 ## Building Locally
 

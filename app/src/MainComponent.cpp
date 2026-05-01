@@ -9,6 +9,7 @@ MainComponent::MainComponent()
     audioEngine = std::make_unique<AudioEngine>();
     timelineView = std::make_unique<TimelineView> (*audioEngine);
     mixerPanel = std::make_unique<MixerPanel> (*audioEngine);
+    workspacePanel = std::make_unique<WorkspacePanel> (*audioEngine);
 
     setOpaque (true);
     setWantsKeyboardFocus (true);
@@ -36,13 +37,52 @@ MainComponent::MainComponent()
         timelineView->refreshPlayhead();
     };
 
+    toolbar.onLoopClicked = [this]
+    {
+        const auto info = audioEngine->getProjectInfo();
+        audioEngine->setLoopEnabled (! info.loopEnabled);
+        updateTransportState();
+        workspacePanel->refreshFromEngine();
+    };
+
+    toolbar.onMetronomeClicked = [this]
+    {
+        const auto info = audioEngine->getProjectInfo();
+        audioEngine->setMetronomeEnabled (! info.metronomeEnabled);
+        updateTransportState();
+        workspacePanel->refreshFromEngine();
+    };
+
+    toolbar.onRecordClicked = [this]
+    {
+        const auto info = audioEngine->getProjectInfo();
+        audioEngine->setRecordingEnabled (! info.recordingEnabled);
+        updateTransportState();
+        workspacePanel->refreshFromEngine();
+    };
+
     timelineView->onProjectChanged = [this]
     {
         mixerPanel->refreshFromEngine();
+        workspacePanel->refreshFromEngine();
         updateTransportState();
     };
 
+    timelineView->onSelectionChanged = [this]
+    {
+        workspacePanel->setSelection (timelineView->getPrimarySelectedClipId(),
+                                      timelineView->getPrimarySelectedTrackId());
+    };
+
+    workspacePanel->onSplitSelectedClip = [this]
+    {
+        timelineView->splitSelectedClipsAtPlayhead();
+        workspacePanel->setSelection (timelineView->getPrimarySelectedClipId(),
+                                      timelineView->getPrimarySelectedTrackId());
+    };
+
     addAndMakeVisible (toolbar);
+    addAndMakeVisible (*workspacePanel);
     addAndMakeVisible (*timelineView);
     addAndMakeVisible (*mixerPanel);
 
@@ -67,6 +107,7 @@ void MainComponent::resized()
 {
     auto bounds = getLocalBounds();
     toolbar.setBounds (bounds.removeFromTop (tokens::toolbarHeight));
+    workspacePanel->setBounds (bounds.removeFromLeft (tokens::workspacePanelWidth));
 
     const auto clampedMixerHeight = juce::jlimit (tokens::mixerMinHeight,
                                                   tokens::mixerMaxHeight,
@@ -146,6 +187,30 @@ bool MainComponent::keyPressed (const juce::KeyPress& key)
         return true;
     }
 
+    if (modifiers.isCommandDown() && (character == 'e' || character == 'E'))
+    {
+        timelineView->splitSelectedClipsAtPlayhead();
+        return true;
+    }
+
+    if (modifiers.isCommandDown() && (character == 'l' || character == 'L'))
+    {
+        const auto info = audioEngine->getProjectInfo();
+        audioEngine->setLoopEnabled (! info.loopEnabled);
+        updateTransportState();
+        workspacePanel->refreshFromEngine();
+        return true;
+    }
+
+    if (modifiers.isCommandDown() && (character == 'k' || character == 'K'))
+    {
+        const auto info = audioEngine->getProjectInfo();
+        audioEngine->setMetronomeEnabled (! info.metronomeEnabled);
+        updateTransportState();
+        workspacePanel->refreshFromEngine();
+        return true;
+    }
+
     if (modifiers.isCommandDown() && (character == 'a' || character == 'A'))
     {
         timelineView->selectAllClips();
@@ -214,6 +279,8 @@ void MainComponent::handleFileChosen (const juce::File& file)
 
     timelineView->refreshFromEngine();
     mixerPanel->refreshFromEngine();
+    workspacePanel->setSelection (timelineView->getPrimarySelectedClipId(),
+                                  timelineView->getPrimarySelectedTrackId());
     updateTransportState();
 }
 
@@ -235,6 +302,7 @@ void MainComponent::updateTransportState()
     toolbar.setHasLoadedFile (hasClips);
     toolbar.setPlaying (playing);
     toolbar.setPosition (position, length);
+    toolbar.setProjectInfo (audioEngine->getProjectInfo());
 }
 
 void MainComponent::timerCallback()
@@ -244,9 +312,9 @@ void MainComponent::timerCallback()
 
 juce::Rectangle<int> MainComponent::getSplitterBounds() const
 {
-    return { 0,
+    return { tokens::workspacePanelWidth,
              getHeight() - mixerHeight - tokens::splitterHeight,
-             getWidth(),
+             juce::jmax (0, getWidth() - tokens::workspacePanelWidth),
              tokens::splitterHeight };
 }
 

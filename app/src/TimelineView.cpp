@@ -83,6 +83,11 @@ void TimelineView::TimelineContent::mouseDown (const juce::MouseEvent& event)
     if (onDeselectAll)
         onDeselectAll();
 
+    const auto trackIndex = static_cast<int> (std::floor ((event.position.y - tokens::rulerHeight) / tokens::trackHeightDefault));
+
+    if (onTrackSelected && juce::isPositiveAndBelow (trackIndex, getTrackCount()))
+        onTrackSelected (getTrackIdForIndex (trackIndex));
+
     if (onSeek)
         onSeek (xToSeconds (event.position.x));
 }
@@ -170,12 +175,15 @@ void TimelineView::TimelineContent::ensureRowCount (int count)
                 onSeek (seconds);
         };
 
-        row->onEmptyLaneClicked = [this]
+        row->onEmptyLaneClicked = [this] (int trackId)
         {
             hintVisible = false;
 
             if (onDeselectAll)
                 onDeselectAll();
+
+            if (onTrackSelected)
+                onTrackSelected (trackId);
         };
 
         row->onTrackNameChanged = [this] (int trackId, juce::String name)
@@ -366,6 +374,12 @@ TimelineView::TimelineView (AudioEngine& engine)
         deselectAllClips();
     };
 
+    content.onTrackSelected = [this] (int trackId)
+    {
+        selectedTrackId = trackId;
+        notifySelectionChanged();
+    };
+
     content.onAddTrack = [this]
     {
         addTrack();
@@ -483,6 +497,12 @@ void TimelineView::clearAudioFile()
 void TimelineView::refreshFromEngine()
 {
     updateTimelineLengthFromEngine();
+
+    const auto tracks = audioEngine.getAllTrackInfo();
+
+    if (! tracks.empty() && audioEngine.getTrackInfo (selectedTrackId).id <= 0)
+        selectedTrackId = tracks.front().id;
+
     content.refreshFromEngine (selectedClipIds);
     updateContentSize();
 
@@ -498,8 +518,9 @@ void TimelineView::refreshPlayhead()
 void TimelineView::addTrack()
 {
     const auto nextNumber = audioEngine.getTrackCount() + 1;
-    audioEngine.addTrack (juce::String::formatted ("Track %02d", nextNumber));
+    selectedTrackId = audioEngine.addTrack (juce::String::formatted ("Track %02d", nextNumber));
     refreshFromEngine();
+    notifySelectionChanged();
 }
 
 void TimelineView::deleteSelectedClips()
@@ -509,21 +530,39 @@ void TimelineView::deleteSelectedClips()
 
     selectedClipIds.clear();
     refreshFromEngine();
+    notifySelectionChanged();
 }
 
 void TimelineView::duplicateSelectedClips()
 {
     const auto targets = selectedClipIds.empty() ? std::set<int> {} : selectedClipIds;
+    std::set<int> duplicatedClipIds;
 
     for (const auto clipId : targets)
     {
         const auto clip = audioEngine.getClipInfo (clipId);
 
         if (clip.id > 0)
-            audioEngine.addClipToTrack (clip.trackId, clip.file, clip.startTimeSeconds + tokens::timelineBarSnapSeconds);
+        {
+            const auto newClipId = audioEngine.addClipToTrack (clip.trackId, clip.file, clip.startTimeSeconds + tokens::timelineBarSnapSeconds);
+
+            if (newClipId > 0)
+            {
+                audioEngine.trimClip (newClipId, clip.sourceOffsetSeconds, clip.lengthSeconds);
+                audioEngine.setClipGainDb (newClipId, clip.gainDb);
+                audioEngine.setClipFades (newClipId, clip.fadeInSeconds, clip.fadeOutSeconds);
+                audioEngine.setClipTransposeSemitones (newClipId, clip.transposeSemitones);
+                audioEngine.setClipLoopEnabled (newClipId, clip.loopEnabled);
+                duplicatedClipIds.insert (newClipId);
+            }
+        }
     }
 
+    if (! duplicatedClipIds.empty())
+        selectedClipIds = duplicatedClipIds;
+
     refreshFromEngine();
+    notifySelectionChanged();
 }
 
 void TimelineView::selectAllClips()
@@ -534,6 +573,7 @@ void TimelineView::selectAllClips()
         selectedClipIds.insert (clip.id);
 
     refreshFromEngine();
+    notifySelectionChanged();
 }
 
 void TimelineView::deselectAllClips()
@@ -543,6 +583,43 @@ void TimelineView::deselectAllClips()
 
     selectedClipIds.clear();
     refreshFromEngine();
+    notifySelectionChanged();
+}
+
+void TimelineView::splitSelectedClipsAtPlayhead()
+{
+    if (selectedClipIds.empty())
+        return;
+
+    const auto playheadSeconds = audioEngine.getPositionSeconds();
+    const auto targets = selectedClipIds;
+    selectedClipIds.clear();
+
+    for (const auto clipId : targets)
+    {
+        for (const auto newClipId : audioEngine.splitClipAt (clipId, playheadSeconds))
+            selectedClipIds.insert (newClipId);
+    }
+
+    refreshFromEngine();
+    notifySelectionChanged();
+}
+
+int TimelineView::getPrimarySelectedClipId() const
+{
+    if (selectedClipIds.empty())
+        return 0;
+
+    return *selectedClipIds.rbegin();
+}
+
+int TimelineView::getPrimarySelectedTrackId() const
+{
+    if (audioEngine.getTrackInfo (selectedTrackId).id > 0)
+        return selectedTrackId;
+
+    const auto tracks = audioEngine.getAllTrackInfo();
+    return tracks.empty() ? 0 : tracks.front().id;
 }
 
 void TimelineView::updateContentSize()
@@ -648,12 +725,16 @@ void TimelineView::handleFilesDropped (const juce::StringArray& files, int track
         const auto tracks = audioEngine.getAllTrackInfo();
 
         if (juce::isPositiveAndBelow (targetIndex, static_cast<int> (tracks.size())))
+        {
             audioEngine.addClipToTrack (tracks[static_cast<size_t> (targetIndex)].id, file, startSeconds);
+            selectedTrackId = tracks[static_cast<size_t> (targetIndex)].id;
+        }
 
         ++addedFileCount;
     }
 
     refreshFromEngine();
+    notifySelectionChanged();
 }
 
 void TimelineView::handleClipMoved (int clipId, float deltaX, float deltaY, bool fine)
@@ -675,9 +756,11 @@ void TimelineView::handleClipMoved (int clipId, float deltaX, float deltaY, bool
         const auto targetIndex = juce::jlimit (0, content.getTrackCount() - 1, currentTrackIndex + rowDelta);
         const auto targetTrackId = content.getTrackIdForIndex (targetIndex);
         audioEngine.moveClip (clip.id, targetTrackId, snapSeconds (clip.startTimeSeconds + timeDelta, fine));
+        selectedTrackId = targetTrackId;
     }
 
     refreshFromEngine();
+    notifySelectionChanged();
 }
 
 void TimelineView::handleClipTrimmed (int clipId, bool trimStart, float deltaX, bool fine)
@@ -707,6 +790,7 @@ void TimelineView::handleClipTrimmed (int clipId, bool trimStart, float deltaX, 
     }
 
     refreshFromEngine();
+    notifySelectionChanged();
 }
 
 void TimelineView::handleClipSelected (int clipId, bool addToSelection)
@@ -719,7 +803,13 @@ void TimelineView::handleClipSelected (int clipId, bool addToSelection)
     else
         selectedClipIds.insert (clipId);
 
+    const auto clip = audioEngine.getClipInfo (clipId);
+
+    if (clip.trackId > 0)
+        selectedTrackId = clip.trackId;
+
     refreshFromEngine();
+    notifySelectionChanged();
 }
 
 void TimelineView::handleClipDeleted (int clipId)
@@ -742,10 +832,17 @@ void TimelineView::handleClipRenamed (int clipId, juce::String name)
 {
     audioEngine.renameClip (clipId, std::move (name));
     refreshFromEngine();
+    notifySelectionChanged();
 }
 
 void TimelineView::updateTimelineLengthFromEngine()
 {
     timelineLengthSeconds = juce::jmax (tokens::timelineEmptyLengthSeconds,
                                         audioEngine.getLengthSeconds() + tokens::timelineTrailingSeconds);
+}
+
+void TimelineView::notifySelectionChanged()
+{
+    if (onSelectionChanged)
+        onSelectionChanged();
 }

@@ -24,7 +24,7 @@ public:
     void setPixelsPerSecond (double newPixelsPerSecond);
 
     std::function<void(double)> onSeek;
-    std::function<void()> onEmptyLaneClicked;
+    std::function<void(int)> onEmptyLaneClicked;
     std::function<void(int, juce::String)> onTrackNameChanged;
     std::function<void(int, float)> onVolumeChanged;
     std::function<void(int, float)> onPanChanged;

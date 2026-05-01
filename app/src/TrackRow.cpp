@@ -146,7 +146,7 @@ void TrackRow::mouseDown (const juce::MouseEvent& event)
         return;
 
     if (onEmptyLaneClicked)
-        onEmptyLaneClicked();
+        onEmptyLaneClicked (trackInfo.id);
 
     if (onSeek)
         onSeek (xToSeconds (event.position.x));

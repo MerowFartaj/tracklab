@@ -15,6 +15,8 @@ void ToolbarButton::paintButton (juce::Graphics& g, bool isMouseOverButton, bool
 
     if (! isEnabled())
         base = tokens::surfaceElevated;
+    else if (getToggleState())
+        base = findColour (juce::TextButton::buttonOnColourId);
     else if (isButtonDown)
         base = base.darker (tokens::surfaceGradientAmount);
     else if (isMouseOverButton)
@@ -40,6 +42,9 @@ Toolbar::Toolbar()
     addAndMakeVisible (loadButton);
     addAndMakeVisible (playPauseButton);
     addAndMakeVisible (stopButton);
+    addAndMakeVisible (recordButton);
+    addAndMakeVisible (loopButton);
+    addAndMakeVisible (clickButton);
     addAndMakeVisible (tempoLabel);
     addAndMakeVisible (signatureLabel);
     addAndMakeVisible (positionLabel);
@@ -61,6 +66,28 @@ Toolbar::Toolbar()
         if (onStopClicked)
             onStopClicked();
     };
+
+    recordButton.onClick = [this]
+    {
+        if (onRecordClicked)
+            onRecordClicked();
+    };
+
+    loopButton.onClick = [this]
+    {
+        if (onLoopClicked)
+            onLoopClicked();
+    };
+
+    clickButton.onClick = [this]
+    {
+        if (onMetronomeClicked)
+            onMetronomeClicked();
+    };
+
+    recordButton.setColour (juce::TextButton::buttonOnColourId, tokens::error);
+    loopButton.setColour (juce::TextButton::buttonOnColourId, tokens::accentPrimary);
+    clickButton.setColour (juce::TextButton::buttonOnColourId, tokens::accentSecondary);
 
     wordmarkLabel.setText ("Tracklab", juce::dontSendNotification);
     wordmarkLabel.setFont (tokens::fontHeader());
@@ -121,6 +148,12 @@ void Toolbar::resized()
     playPauseButton.setBounds (transportGroup.removeFromLeft (tokens::toolbarTransportButtonWidth));
     transportGroup.removeFromLeft (tokens::trackHeaderSmallGap);
     stopButton.setBounds (transportGroup.removeFromLeft (tokens::toolbarTransportButtonWidth));
+    transportGroup.removeFromLeft (tokens::trackHeaderSmallGap);
+    recordButton.setBounds (transportGroup.removeFromLeft (tokens::toolbarSmallButtonWidth));
+    transportGroup.removeFromLeft (tokens::trackHeaderSmallGap);
+    loopButton.setBounds (transportGroup.removeFromLeft (tokens::toolbarSmallButtonWidth));
+    transportGroup.removeFromLeft (tokens::trackHeaderSmallGap);
+    clickButton.setBounds (transportGroup.removeFromLeft (tokens::toolbarSmallButtonWidth));
 
     row.removeFromLeft (tokens::toolbarGap);
     tempoLabel.setBounds (row.removeFromLeft (tokens::toolbarTempoWidth)
@@ -150,6 +183,18 @@ void Toolbar::setPosition (double positionSeconds, double lengthSeconds)
 {
     positionLabel.setText (formatTime (positionSeconds) + " / " + formatTime (lengthSeconds),
                            juce::dontSendNotification);
+}
+
+void Toolbar::setProjectInfo (const ProjectInfo& info)
+{
+    tempoLabel.setText (juce::String (info.tempoBpm, 2) + " BPM", juce::dontSendNotification);
+    signatureLabel.setText (juce::String::formatted ("%d/%d",
+                                                     info.timeSignatureNumerator,
+                                                     info.timeSignatureDenominator),
+                            juce::dontSendNotification);
+    loopButton.setToggleState (info.loopEnabled, juce::dontSendNotification);
+    clickButton.setToggleState (info.metronomeEnabled, juce::dontSendNotification);
+    recordButton.setToggleState (info.recordingEnabled, juce::dontSendNotification);
 }
 
 juce::String Toolbar::formatTime (double seconds)

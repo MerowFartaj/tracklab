@@ -63,6 +63,8 @@ target_sources(tracklab_app
         app/src/Toolbar.h
         app/src/TrackRow.cpp
         app/src/TrackRow.h
+        app/src/WorkspacePanel.cpp
+        app/src/WorkspacePanel.h
         engine/AudioEngine.cpp
         engine/AudioEngine.h)
 
@@ -88,7 +90,9 @@ source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/app/src
         app/src/Toolbar.cpp
         app/src/Toolbar.h
         app/src/TrackRow.cpp
-        app/src/TrackRow.h)
+        app/src/TrackRow.h
+        app/src/WorkspacePanel.cpp
+        app/src/WorkspacePanel.h)
 
 # Let app and UI code include project headers from the repository root.
 target_include_directories(tracklab_app
@@ -113,8 +117,7 @@ set_target_properties(tracklab_app
         XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "com.merowfartaj.tracklab")
 
 # Link the JUCE modules that form the current desktop shell.
-# Tracktion modules are linked now to prove the engine integrates cleanly,
-# even though DAW features will be added in later milestones.
+# Tracktion modules power the current transport, timeline, mixer, and device shell.
 target_link_libraries(tracklab_app
     PRIVATE
         juce::juce_audio_basics

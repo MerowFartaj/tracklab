@@ -3,6 +3,7 @@
 #include "MixerPanel.h"
 #include "TimelineView.h"
 #include "Toolbar.h"
+#include "WorkspacePanel.h"
 #include "engine/AudioEngine.h"
 
 #include <juce_gui_basics/juce_gui_basics.h>
@@ -33,6 +34,7 @@ private:
     std::unique_ptr<juce::FileChooser> fileChooser;
     std::unique_ptr<TimelineView> timelineView;
     std::unique_ptr<MixerPanel> mixerPanel;
+    std::unique_ptr<WorkspacePanel> workspacePanel;
     Toolbar toolbar;
 
     int mixerHeight = tracklab::design::mixerDefaultHeight;
