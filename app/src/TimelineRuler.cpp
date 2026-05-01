@@ -1,8 +1,11 @@
 #include "TimelineRuler.h"
 
+#include "UiDrawing.h"
+
 #include <cmath>
 
 namespace tokens = tracklab::design;
+namespace ui = tracklab::ui;
 
 TimelineRuler::TimelineRuler()
 {
@@ -12,8 +15,16 @@ TimelineRuler::TimelineRuler()
 void TimelineRuler::paint (juce::Graphics& g)
 {
     auto bounds = getLocalBounds().toFloat();
-    g.setGradientFill (tokens::verticalSurfaceGradient (tokens::surfaceElevated, bounds));
+    juce::ColourGradient gradient { tokens::surfaceChrome,
+                                    bounds.getX(),
+                                    bounds.getY(),
+                                    tokens::surfaceInset,
+                                    bounds.getX(),
+                                    bounds.getBottom(),
+                                    false };
+    g.setGradientFill (gradient);
     g.fillAll();
+    ui::drawSubtleStripes (g, bounds, tokens::highlightBase, tokens::decorativeStripeSpacing * 2);
 
     const auto clip = g.getClipBounds();
     const auto firstTick = juce::jmax (0, static_cast<int> (std::floor (clip.getX() / pixelsPerSecond / tokens::minorTickSeconds)));
@@ -26,13 +37,15 @@ void TimelineRuler::paint (juce::Graphics& g)
         const auto isMajor = juce::approximatelyEqual (std::fmod (seconds, tokens::majorTickSeconds), 0.0)
                           || juce::approximatelyEqual (std::fmod (seconds, tokens::majorTickSeconds), tokens::majorTickSeconds);
 
+        const auto isBar = std::fmod (seconds, tokens::timelineBarLineMultiple) == 0.0;
         g.setColour ((isMajor ? tokens::borderSubtle : tokens::textTertiary)
-                         .withAlpha (isMajor ? tokens::panelBorderAlpha : tokens::subdivisionLineAlpha));
+                         .withAlpha (isBar ? tokens::gridBarAlpha
+                                           : (isMajor ? tokens::panelBorderAlpha : tokens::subdivisionLineAlpha)));
         g.drawVerticalLine (juce::roundToInt (x), isMajor ? 0.0f : bounds.getHeight() * 0.55f, bounds.getBottom());
 
         if (isMajor)
         {
-            g.setColour (tokens::textTertiary);
+            g.setColour (isBar ? tokens::textSecondary : tokens::textTertiary);
             g.setFont (tokens::fontMonospace());
             g.drawText (formatBarsBeats (seconds) + "  " + formatSeconds (seconds),
                         juce::Rectangle<float> { x + tokens::toolbarGap,

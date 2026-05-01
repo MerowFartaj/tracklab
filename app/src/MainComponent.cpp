@@ -1,11 +1,15 @@
 #include "MainComponent.h"
 
 #include "DesignTokens.h"
+#include "UiDrawing.h"
 
 namespace tokens = tracklab::design;
+namespace ui = tracklab::ui;
 
 MainComponent::MainComponent()
 {
+    setLookAndFeel (&lookAndFeel);
+
     audioEngine = std::make_unique<AudioEngine>();
     timelineView = std::make_unique<TimelineView> (*audioEngine);
     mixerPanel = std::make_unique<MixerPanel> (*audioEngine);
@@ -90,17 +94,46 @@ MainComponent::MainComponent()
     startTimerHz (30);
 }
 
+MainComponent::~MainComponent()
+{
+    setLookAndFeel (nullptr);
+}
+
 void MainComponent::paint (juce::Graphics& g)
 {
-    g.fillAll (tokens::backgroundBase);
+    auto bounds = getLocalBounds().toFloat();
+    juce::ColourGradient backdrop { tokens::backgroundBase.brighter (tokens::surfaceGradientAmount),
+                                    bounds.getX(),
+                                    bounds.getY(),
+                                    tokens::backgroundDeep,
+                                    bounds.getRight(),
+                                    bounds.getBottom(),
+                                    false };
+    backdrop.addColour (0.48, tokens::surfaceInset);
+    g.setGradientFill (backdrop);
+    g.fillAll();
+
+    ui::drawSoftGlow (g, bounds.withSizeKeepingCentre (bounds.getWidth() * 0.50f, bounds.getHeight() * 0.70f)
+                               .translated (bounds.getWidth() * 0.22f, -bounds.getHeight() * 0.22f),
+                      tokens::accentSecondary,
+                      tokens::accentWashAlpha);
+    ui::drawSoftGlow (g, bounds.withSizeKeepingCentre (bounds.getWidth() * 0.38f, bounds.getHeight() * 0.42f)
+                               .translated (-bounds.getWidth() * 0.34f, bounds.getHeight() * 0.28f),
+                      tokens::accentPrimary,
+                      tokens::accentWashAlpha);
+    ui::drawSubtleStripes (g, bounds, tokens::highlightBase, tokens::decorativeStripeSpacing * 2);
 
     auto splitter = getSplitterBounds().toFloat();
-    g.setColour (tokens::surfaceRaised);
-    g.fillRect (splitter);
+    ui::drawGlassPanel (g, splitter, tokens::surfaceChrome, 0.0f, false);
     g.setColour (tokens::highlightBase.withAlpha (tokens::panelTopHighlightAlpha));
     g.drawHorizontalLine (juce::roundToInt (splitter.getY()), splitter.getX(), splitter.getRight());
     g.setColour (tokens::borderSubtle.withAlpha (tokens::panelBorderAlpha));
     g.drawHorizontalLine (juce::roundToInt (splitter.getBottom() - 1.0f), splitter.getX(), splitter.getRight());
+
+    auto handle = splitter.withSizeKeepingCentre (static_cast<float> (tokens::splitterHandleWidth),
+                                                  static_cast<float> (tokens::splitterHandleHeight));
+    g.setColour (tokens::accentCyan.withAlpha (tokens::browserSelectedAlpha));
+    g.fillRoundedRectangle (handle, 1.0f);
 }
 
 void MainComponent::resized()

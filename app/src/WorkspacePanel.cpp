@@ -1,6 +1,7 @@
 #include "WorkspacePanel.h"
 
 namespace tokens = tracklab::design;
+namespace ui = tracklab::ui;
 
 namespace
 {
@@ -41,6 +42,44 @@ void addSnapItems (juce::ComboBox& box)
 }
 }
 
+void WorkspacePanel::BrowserItem::paint (juce::Graphics& g)
+{
+    auto bounds = getLocalBounds().toFloat().reduced (0.5f);
+    auto base = selected ? colour.withAlpha (tokens::browserSelectedAlpha)
+                         : tokens::surfaceInset.withAlpha (tokens::browserItemAlpha);
+
+    if (selected)
+        ui::drawSoftGlow (g, bounds, colour, tokens::accentWashAlpha);
+
+    g.setColour (base);
+    g.fillRoundedRectangle (bounds, tokens::browserItemRadius);
+
+    auto iconBounds = getLocalBounds().removeFromLeft (tokens::browserIconCell)
+                                      .withSizeKeepingCentre (tokens::iconSizeMedium, tokens::iconSizeMedium)
+                                      .toFloat();
+    ui::drawIcon (g, icon, iconBounds, colour, tokens::iconStrokeWidth);
+
+    g.setColour (selected ? tokens::textPrimary : tokens::textSecondary);
+    g.setFont (selected ? tokens::fontBody().withStyle (juce::Font::bold) : tokens::fontBody());
+    g.drawFittedText (text,
+                      getLocalBounds().withTrimmedLeft (tokens::browserIconCell)
+                                      .reduced (tokens::trackHeaderSmallGap, 0),
+                      juce::Justification::centredLeft,
+                      1);
+}
+
+void WorkspacePanel::BrowserItem::setItem (juce::String newText,
+                                           ui::Icon newIcon,
+                                           juce::Colour newColour,
+                                           bool shouldBeSelected)
+{
+    text = std::move (newText);
+    icon = newIcon;
+    colour = newColour;
+    selected = shouldBeSelected;
+    repaint();
+}
+
 WorkspacePanel::WorkspacePanel (AudioEngine& engine)
     : audioEngine (engine)
 {
@@ -77,11 +116,13 @@ WorkspacePanel::WorkspacePanel (AudioEngine& engine)
     configureLabel (selectedClipLabel, tokens::fontMetadata(), tokens::textSecondary);
     configureLabel (selectedTrackLabel, tokens::fontMetadata(), tokens::textSecondary);
 
+    browserHeader.setText ("Library", juce::dontSendNotification);
+    projectHeader.setText ("Project", juce::dontSendNotification);
+    clipHeader.setText ("Inspector", juce::dontSendNotification);
+    deviceHeader.setText ("Devices", juce::dontSendNotification);
+
     for (auto& item : browserItems)
-    {
         addAndMakeVisible (item);
-        configureLabel (item, tokens::fontBody(), tokens::textSecondary);
-    }
 
     browserSearch.setTextToShowWhenEmpty ("Search sounds and devices", tokens::textTertiary);
     browserSearch.setFont (tokens::fontBody());
@@ -89,6 +130,7 @@ WorkspacePanel::WorkspacePanel (AudioEngine& engine)
     browserSearch.setColour (juce::TextEditor::textColourId, tokens::textPrimary);
     browserSearch.setColour (juce::TextEditor::outlineColourId, tokens::borderSubtle.withAlpha (tokens::panelBorderAlpha));
     browserSearch.setColour (juce::TextEditor::focusedOutlineColourId, tokens::accentSecondary.withAlpha (tokens::panelBorderAlpha));
+    browserSearch.setIndents (tokens::browserIconCell, 0);
 
     configureSlider (tempoSlider, 20.0, 300.0, 0.01);
     tempoSlider.setTextValueSuffix (" BPM");
@@ -254,8 +296,23 @@ WorkspacePanel::WorkspacePanel (AudioEngine& engine)
 void WorkspacePanel::paint (juce::Graphics& g)
 {
     auto bounds = getLocalBounds().toFloat();
-    g.setGradientFill (tokens::verticalSurfaceGradient (tokens::surfaceElevated, bounds));
+    juce::ColourGradient gradient { tokens::surfaceChrome,
+                                    bounds.getX(),
+                                    bounds.getY(),
+                                    tokens::surfaceInset,
+                                    bounds.getX(),
+                                    bounds.getBottom(),
+                                    false };
+    gradient.addColour (tokens::toolbarGradientMidpoint, tokens::surfaceElevated);
+    g.setGradientFill (gradient);
     g.fillAll();
+
+    ui::drawSoftGlow (g,
+                      getLocalBounds().toFloat().withSizeKeepingCentre (getWidth() * 0.90f,
+                                                                        getHeight() * 0.34f)
+                                               .translated (-getWidth() * 0.28f, getHeight() * 0.10f),
+                      tokens::accentPrimary,
+                      tokens::accentWashAlpha);
 
     g.setColour (tokens::borderSubtle.withAlpha (tokens::panelBorderAlpha));
     g.drawVerticalLine (getWidth() - 1, 0.0f, static_cast<float> (getHeight()));
@@ -264,13 +321,19 @@ void WorkspacePanel::paint (juce::Graphics& g)
     paintSectionHeader (g, projectHeader.getBounds(), "Project");
     paintSectionHeader (g, clipHeader.getBounds(), "Clip");
     paintSectionHeader (g, deviceHeader.getBounds(), "Devices");
+
+    auto searchIcon = browserSearch.getBounds().removeFromLeft (tokens::browserIconCell)
+                                      .withSizeKeepingCentre (tokens::iconSizeSmall, tokens::iconSizeSmall)
+                                      .toFloat();
+    ui::drawIcon (g, ui::Icon::search, searchIcon, tokens::textTertiary, tokens::iconStrokeWidth);
 }
 
 void WorkspacePanel::resized()
 {
     auto bounds = getLocalBounds().reduced (tokens::workspacePadding);
 
-    browserHeader.setBounds (bounds.removeFromTop (tokens::workspaceSectionHeaderHeight));
+    browserHeader.setBounds (bounds.removeFromTop (tokens::workspaceSectionHeaderHeight)
+                                   .withTrimmedLeft (tokens::browserIconCell));
     browserSearch.setBounds (bounds.removeFromTop (tokens::workspaceControlHeight));
     bounds.removeFromTop (tokens::workspaceSmallGap);
 
@@ -278,7 +341,8 @@ void WorkspacePanel::resized()
         item.setBounds (bounds.removeFromTop (tokens::workspaceBrowserItemHeight));
 
     bounds.removeFromTop (tokens::workspaceGap);
-    projectHeader.setBounds (bounds.removeFromTop (tokens::workspaceSectionHeaderHeight));
+    projectHeader.setBounds (bounds.removeFromTop (tokens::workspaceSectionHeaderHeight)
+                                    .withTrimmedLeft (tokens::browserIconCell));
     tempoSlider.setBounds (bounds.removeFromTop (tokens::workspaceRowHeight));
 
     auto projectRow = bounds.removeFromTop (tokens::workspaceRowHeight);
@@ -296,7 +360,8 @@ void WorkspacePanel::resized()
     recordButton.setBounds (projectRowTwo.removeFromLeft (tokens::workspaceButtonWidth));
 
     bounds.removeFromTop (tokens::workspaceGap);
-    clipHeader.setBounds (bounds.removeFromTop (tokens::workspaceSectionHeaderHeight));
+    clipHeader.setBounds (bounds.removeFromTop (tokens::workspaceSectionHeaderHeight)
+                                 .withTrimmedLeft (tokens::browserIconCell));
     selectedClipLabel.setBounds (bounds.removeFromTop (tokens::workspaceRowHeight));
     clipGainSlider.setBounds (bounds.removeFromTop (tokens::workspaceRowHeight));
     fadeInSlider.setBounds (bounds.removeFromTop (tokens::workspaceRowHeight));
@@ -309,7 +374,8 @@ void WorkspacePanel::resized()
     splitButton.setBounds (clipButtons.removeFromLeft (tokens::workspaceButtonWidth));
 
     bounds.removeFromTop (tokens::workspaceGap);
-    deviceHeader.setBounds (bounds.removeFromTop (tokens::workspaceSectionHeaderHeight));
+    deviceHeader.setBounds (bounds.removeFromTop (tokens::workspaceSectionHeaderHeight)
+                                   .withTrimmedLeft (tokens::browserIconCell));
     selectedTrackLabel.setBounds (bounds.removeFromTop (tokens::workspaceRowHeight));
     eqButton.setBounds (bounds.removeFromTop (tokens::workspaceControlHeight).removeFromLeft (tokens::workspaceButtonWidth));
 
@@ -382,10 +448,25 @@ void WorkspacePanel::configureComboBox (juce::ComboBox& comboBox)
     comboBox.setColour (juce::ComboBox::arrowColourId, tokens::textSecondary);
 }
 
-void WorkspacePanel::paintSectionHeader (juce::Graphics& g, juce::Rectangle<int> bounds, const juce::String&)
+void WorkspacePanel::paintSectionHeader (juce::Graphics& g, juce::Rectangle<int> bounds, const juce::String& title)
 {
     if (bounds.isEmpty())
         return;
+
+    auto headerIcon = ui::Icon::sliders;
+
+    if (title == "Browser")
+        headerIcon = ui::Icon::folder;
+    else if (title == "Project")
+        headerIcon = ui::Icon::project;
+    else if (title == "Clip")
+        headerIcon = ui::Icon::clip;
+
+    auto iconBounds = bounds.withX (tokens::workspacePadding)
+                            .withWidth (tokens::browserIconCell)
+                            .withSizeKeepingCentre (tokens::iconSizeMedium, tokens::iconSizeMedium)
+                            .toFloat();
+    ui::drawIcon (g, headerIcon, iconBounds, tokens::accentPrimary, tokens::iconStrokeWidth);
 
     g.setColour (tokens::borderSubtle.withAlpha (tokens::panelBorderAlpha));
     g.drawHorizontalLine (bounds.getBottom() - 1, static_cast<float> (bounds.getX()), static_cast<float> (bounds.getRight()));
@@ -475,14 +556,30 @@ void WorkspacePanel::refreshButtonColours()
 
 void WorkspacePanel::populateBrowser()
 {
-    const juce::StringArray items
+    struct BrowserSeed
     {
-        "Audio Files", "MIDI Clips", "Drums", "Instruments",
-        "Audio Effects", "MIDI Effects", "Project Media", "Markers"
+        juce::String text;
+        ui::Icon icon;
+        juce::Colour colour;
+    };
+
+    const std::array<BrowserSeed, 8> items
+    {
+        BrowserSeed { "Audio Files", ui::Icon::audio, tokens::trackColors[4] },
+        BrowserSeed { "MIDI Clips", ui::Icon::midi, tokens::trackColors[6] },
+        BrowserSeed { "Drums", ui::Icon::drums, tokens::trackColors[1] },
+        BrowserSeed { "Instruments", ui::Icon::keyboard, tokens::trackColors[3] },
+        BrowserSeed { "Audio Effects", ui::Icon::effects, tokens::trackColors[5] },
+        BrowserSeed { "MIDI Effects", ui::Icon::sparkle, tokens::trackColors[2] },
+        BrowserSeed { "Project Media", ui::Icon::project, tokens::textSecondary },
+        BrowserSeed { "Markers", ui::Icon::marker, tokens::accentPrimary }
     };
 
     for (auto i = 0; i < static_cast<int> (browserItems.size()); ++i)
-        browserItems[static_cast<size_t> (i)].setText (items[i], juce::dontSendNotification);
+    {
+        const auto& item = items[static_cast<size_t> (i)];
+        browserItems[static_cast<size_t> (i)].setItem (item.text, item.icon, item.colour, i == 0);
+    }
 }
 
 bool WorkspacePanel::hasSelectedClip() const

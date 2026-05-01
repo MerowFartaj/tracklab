@@ -20,6 +20,12 @@ void Playhead::paint (juce::Graphics& g)
     marker.lineTo (static_cast<float> (x), static_cast<float> (tokens::playheadMarkerHeight));
     marker.closeSubPath();
 
+    g.setColour (tokens::accentPrimary.withAlpha (tokens::selectedGlowAlpha));
+    g.fillRect (juce::Rectangle<float> { static_cast<float> (x) - tokens::playheadGlowWidth * 0.5f,
+                                         0.0f,
+                                         tokens::playheadGlowWidth,
+                                         static_cast<float> (getHeight()) });
+
     g.setColour (tokens::accentPrimary);
     g.fillPath (marker);
     g.fillRect (juce::Rectangle<float> { static_cast<float> (x) - tokens::playheadWidth * 0.5f,

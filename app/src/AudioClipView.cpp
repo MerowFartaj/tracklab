@@ -1,8 +1,11 @@
 #include "AudioClipView.h"
 
+#include "UiDrawing.h"
+
 #include <cmath>
 
 namespace tokens = tracklab::design;
+namespace ui = tracklab::ui;
 
 AudioClipView::AudioClipView()
 {
@@ -29,6 +32,7 @@ void AudioClipView::paint (juce::Graphics& g)
                                         false };
     g.setGradientFill (clipGradient);
     g.fillRoundedRectangle (bounds, tokens::clipCornerRadius);
+    ui::drawSubtleStripes (g, bounds.reduced (1.0f), tokens::highlightBase, tokens::decorativeStripeSpacing);
 
     g.setColour (tokens::highlightBase.withAlpha (tokens::clipTopHighlightAlpha));
     g.drawHorizontalLine (1, bounds.getX() + tokens::clipCornerRadius, bounds.getRight() - tokens::clipCornerRadius);
@@ -46,14 +50,36 @@ void AudioClipView::paint (juce::Graphics& g)
 
     if (selected)
     {
+        ui::drawSoftGlow (g, bounds, tokens::accentSecondary, tokens::selectedGlowAlpha);
         g.setColour (tokens::accentSecondary.withAlpha (tokens::selectedGlowAlpha));
         g.drawRoundedRectangle (bounds.expanded (2.0f), tokens::clipCornerRadius + 2.0f, 1.0f);
     }
 
     auto labelBounds = getLocalBounds().reduced (tokens::toolbarGap, 0);
+    auto labelPill = labelBounds.removeFromTop (tokens::clipLabelHeight).toFloat();
+    g.setColour (tokens::backgroundDeep.withAlpha (tokens::glassAlpha));
+    g.fillRoundedRectangle (labelPill, tokens::clipCornerRadius);
+    ui::drawIcon (g,
+                  ui::Icon::clip,
+                  labelPill.removeFromLeft (tokens::browserIconCell).withSizeKeepingCentre (tokens::iconSizeSmall,
+                                                                                            tokens::iconSizeSmall),
+                  tokens::textPrimary.withAlpha (tokens::clipIconAlpha),
+                  tokens::iconStrokeWidth);
     g.setColour (tokens::textPrimary);
     g.setFont (tokens::fontMetadata());
-    g.drawText (clipInfo.name, labelBounds.removeFromTop (18), juce::Justification::centredLeft, true);
+    g.drawText (clipInfo.name, labelPill, juce::Justification::centredLeft, true);
+
+    g.setColour (tokens::highlightBase.withAlpha (tokens::clipTopHighlightAlpha));
+    g.fillRoundedRectangle ({ bounds.getX() + tokens::clipHandleInset,
+                              bounds.getY() + tokens::clipHandleInset,
+                              tokens::clipHandleVisualWidth,
+                              bounds.getHeight() - tokens::clipHandleInset * 2.0f },
+                            tokens::clipHandleVisualWidth * 0.5f);
+    g.fillRoundedRectangle ({ bounds.getRight() - tokens::clipHandleInset - tokens::clipHandleVisualWidth,
+                              bounds.getY() + tokens::clipHandleInset,
+                              tokens::clipHandleVisualWidth,
+                              bounds.getHeight() - tokens::clipHandleInset * 2.0f },
+                            tokens::clipHandleVisualWidth * 0.5f);
 }
 
 void AudioClipView::mouseDown (const juce::MouseEvent& event)

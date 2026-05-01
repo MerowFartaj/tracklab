@@ -1,6 +1,9 @@
 #include "MixerPanel.h"
 
+#include "UiDrawing.h"
+
 namespace tokens = tracklab::design;
+namespace ui = tracklab::ui;
 
 MixerPanel::ChannelStrip::ChannelStrip()
 {
@@ -72,14 +75,23 @@ MixerPanel::ChannelStrip::ChannelStrip()
 void MixerPanel::ChannelStrip::paint (juce::Graphics& g)
 {
     auto bounds = getLocalBounds().toFloat().reduced (0.5f);
-    g.setGradientFill (tokens::verticalSurfaceGradient (tokens::surfaceElevated, bounds));
-    g.fillRect (bounds);
+    const auto stripColour = isMaster ? tokens::accentPrimary : trackInfo.colour;
 
-    g.setColour ((isMaster ? tokens::accentPrimary : trackInfo.colour).withAlpha (isMaster ? tokens::panelBorderAlpha : 1.0f));
+    ui::drawGlassPanel (g, bounds, tokens::surfaceElevated, 0.0f, false);
+    ui::drawSoftGlow (g,
+                      bounds.withSizeKeepingCentre (bounds.getWidth(), bounds.getHeight() * 0.45f)
+                            .translated (0.0f, -bounds.getHeight() * 0.26f),
+                      stripColour,
+                      tokens::mixerGlowAlpha);
+
+    g.setColour (stripColour.withAlpha (isMaster ? tokens::panelBorderAlpha : 1.0f));
     g.fillRect (0, 0, getWidth(), tokens::mixerTrackColorBarHeight);
 
-    g.setColour (tokens::borderSubtle.withAlpha (tokens::panelBorderAlpha));
-    g.drawRect (getLocalBounds(), 1);
+    auto iconBounds = juce::Rectangle<float> { tokens::mixerStripPadding,
+                                               tokens::mixerTrackColorBarHeight + tokens::trackHeaderSmallGap,
+                                               static_cast<float> (tokens::iconSizeSmall),
+                                               static_cast<float> (tokens::iconSizeSmall) };
+    ui::drawIcon (g, isMaster ? ui::Icon::mixer : ui::Icon::waveform, iconBounds, stripColour, tokens::iconStrokeWidth);
 
     auto meter = getMeterBounds().toFloat();
     g.setColour (tokens::surfaceRaised.withAlpha (tokens::meterInactiveAlpha));
@@ -100,7 +112,12 @@ void MixerPanel::ChannelStrip::paint (juce::Graphics& g)
         gradient.addColour (tokens::meterRedPoint, tokens::error);
         g.setGradientFill (gradient);
         g.fillRoundedRectangle (filled, tokens::clipCornerRadius);
+        g.setColour (tokens::highlightBase.withAlpha (tokens::clipTopHighlightAlpha));
+        g.drawRoundedRectangle (filled, tokens::clipCornerRadius, 1.0f);
     }
+
+    g.setColour (tokens::borderSubtle.withAlpha (tokens::panelBorderAlpha));
+    g.drawRect (getLocalBounds(), 1);
 }
 
 void MixerPanel::ChannelStrip::resized()
@@ -206,8 +223,17 @@ MixerPanel::MixerPanel (AudioEngine& engine)
 void MixerPanel::paint (juce::Graphics& g)
 {
     auto bounds = getLocalBounds().toFloat();
-    g.setGradientFill (tokens::verticalSurfaceGradient (tokens::surfaceElevated, bounds));
+    juce::ColourGradient gradient { tokens::surfaceInset,
+                                    bounds.getX(),
+                                    bounds.getY(),
+                                    tokens::backgroundDeep,
+                                    bounds.getX(),
+                                    bounds.getBottom(),
+                                    false };
+    gradient.addColour (tokens::toolbarGradientMidpoint, tokens::surfaceElevated);
+    g.setGradientFill (gradient);
     g.fillAll();
+    ui::drawSubtleStripes (g, bounds, tokens::highlightBase, tokens::decorativeStripeSpacing * 2);
 
     g.setColour (tokens::borderSubtle.withAlpha (tokens::panelBorderAlpha));
     g.drawHorizontalLine (0, 0.0f, static_cast<float> (getWidth()));

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "AppLookAndFeel.h"
 #include "MixerPanel.h"
 #include "TimelineView.h"
 #include "Toolbar.h"
@@ -13,6 +14,7 @@ class MainComponent final : public juce::Component,
 {
 public:
     MainComponent();
+    ~MainComponent() override;
 
     void paint (juce::Graphics& g) override;
     void resized() override;
@@ -30,6 +32,7 @@ private:
 
     static bool isSupportedFile (const juce::File& file);
 
+    TracklabLookAndFeel lookAndFeel;
     std::unique_ptr<AudioEngine> audioEngine;
     std::unique_ptr<juce::FileChooser> fileChooser;
     std::unique_ptr<TimelineView> timelineView;

@@ -44,6 +44,8 @@ juce_add_gui_app(tracklab_app
 target_sources(tracklab_app
     PRIVATE
         app/src/Main.cpp
+        app/src/AppLookAndFeel.cpp
+        app/src/AppLookAndFeel.h
         app/src/AudioClipView.cpp
         app/src/AudioClipView.h
         app/src/DesignTokens.h
@@ -63,6 +65,8 @@ target_sources(tracklab_app
         app/src/Toolbar.h
         app/src/TrackRow.cpp
         app/src/TrackRow.h
+        app/src/UiDrawing.cpp
+        app/src/UiDrawing.h
         app/src/WorkspacePanel.cpp
         app/src/WorkspacePanel.h
         engine/AudioEngine.cpp
@@ -72,6 +76,8 @@ source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/app/src
     PREFIX "App"
     FILES
         app/src/Main.cpp
+        app/src/AppLookAndFeel.cpp
+        app/src/AppLookAndFeel.h
         app/src/AudioClipView.cpp
         app/src/AudioClipView.h
         app/src/DesignTokens.h
@@ -91,6 +97,8 @@ source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/app/src
         app/src/Toolbar.h
         app/src/TrackRow.cpp
         app/src/TrackRow.h
+        app/src/UiDrawing.cpp
+        app/src/UiDrawing.h
         app/src/WorkspacePanel.cpp
         app/src/WorkspacePanel.h)
 

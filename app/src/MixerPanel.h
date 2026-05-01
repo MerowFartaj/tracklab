@@ -23,7 +23,7 @@ private:
     public:
         void paint (juce::Graphics& g) override
         {
-            g.fillAll (tracklab::design::surfaceElevated);
+            g.fillAll (tracklab::design::surfaceInset);
         }
     };
 

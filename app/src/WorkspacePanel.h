@@ -1,6 +1,7 @@
 #pragma once
 
 #include "DesignTokens.h"
+#include "UiDrawing.h"
 #include "engine/AudioEngine.h"
 
 #include <juce_gui_basics/juce_gui_basics.h>
@@ -21,6 +22,19 @@ public:
     std::function<void()> onSplitSelectedClip;
 
 private:
+    class BrowserItem final : public juce::Component
+    {
+    public:
+        void paint (juce::Graphics& g) override;
+        void setItem (juce::String newText, tracklab::ui::Icon newIcon, juce::Colour newColour, bool shouldBeSelected);
+
+    private:
+        juce::String text;
+        tracklab::ui::Icon icon = tracklab::ui::Icon::none;
+        juce::Colour colour = tracklab::design::textSecondary;
+        bool selected = false;
+    };
+
     void configureLabel (juce::Label& label, juce::Font font, juce::Colour colour);
     void configureButton (juce::TextButton& button);
     void configureSlider (juce::Slider& slider, double minimum, double maximum, double interval);
@@ -42,7 +56,7 @@ private:
 
     juce::Label browserHeader;
     juce::TextEditor browserSearch;
-    std::array<juce::Label, 8> browserItems;
+    std::array<BrowserItem, 8> browserItems;
 
     juce::Label projectHeader;
     juce::Slider tempoSlider;

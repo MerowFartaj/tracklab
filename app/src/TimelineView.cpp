@@ -1,8 +1,11 @@
 #include "TimelineView.h"
 
+#include "UiDrawing.h"
+
 #include <cmath>
 
 namespace tokens = tracklab::design;
+namespace ui = tracklab::ui;
 
 namespace
 {
@@ -42,6 +45,7 @@ TimelineView::TimelineContent::TimelineContent (AudioEngine& engine)
     };
 
     addTrackButton.setWantsKeyboardFocus (false);
+    addTrackButton.setButtonText ("+ Add Track");
     addTrackButton.setColour (juce::TextButton::buttonColourId, tokens::surfaceRaised);
     addTrackButton.setColour (juce::TextButton::textColourOffId, tokens::textPrimary);
     addTrackButton.onClick = [this]
@@ -55,17 +59,34 @@ TimelineView::TimelineContent::TimelineContent (AudioEngine& engine)
 
 void TimelineView::TimelineContent::paint (juce::Graphics& g)
 {
-    g.fillAll (tokens::backgroundBase);
+    g.fillAll (tokens::backgroundDeep);
+    ui::drawSubtleStripes (g, getLocalBounds().toFloat(), tokens::highlightBase, tokens::decorativeStripeSpacing * 2);
+}
 
+void TimelineView::TimelineContent::paintOverChildren (juce::Graphics& g)
+{
     if (hintVisible && clipInfos.empty())
     {
         auto visible = g.getClipBounds().toFloat();
         visible.removeFromTop (tokens::rulerHeight);
 
+        auto hint = visible.withSizeKeepingCentre (juce::jmin (visible.getWidth() * tokens::timelineHintWidthRatio,
+                                                               static_cast<float> (tokens::timelineHintMaxWidth)),
+                                                   static_cast<float> (tokens::timelineHintHeight));
+        ui::drawGlassPanel (g, hint, tokens::surfaceInset.withAlpha (tokens::glassAlpha), tokens::panelSectionRadius, false);
+        ui::drawIcon (g,
+                      ui::Icon::waveform,
+                      hint.removeFromLeft (static_cast<float> (tokens::timelineHintIconWidth))
+                          .withSizeKeepingCentre (tokens::iconSizeLarge, tokens::iconSizeLarge),
+                      tokens::accentCyan,
+                      tokens::thickIconStrokeWidth);
+        ui::drawTinySparkles (g, hint.withTrimmedLeft (hint.getWidth() * tokens::timelineHintSparkleStartRatio),
+                              tokens::accentPrimary);
+
         g.setColour (tokens::textTertiary.withAlpha (tokens::timelineHintAlpha));
         g.setFont (tokens::fontHeader());
-        g.drawText ("Drop audio files here to begin",
-                    visible,
+        g.drawText ("Drop audio files to start",
+                    hint,
                     juce::Justification::centred,
                     false);
     }

@@ -1,9 +1,11 @@
 #include "Toolbar.h"
 
 namespace tokens = tracklab::design;
+namespace ui = tracklab::ui;
 
-ToolbarButton::ToolbarButton (const juce::String& text)
-    : juce::TextButton (text)
+ToolbarButton::ToolbarButton (const juce::String& text, ui::Icon iconToUse)
+    : juce::TextButton (text),
+      icon (iconToUse)
 {
     setWantsKeyboardFocus (false);
 }
@@ -22,18 +24,28 @@ void ToolbarButton::paintButton (juce::Graphics& g, bool isMouseOverButton, bool
     else if (isMouseOverButton)
         base = base.brighter (tokens::surfaceGradientAmount);
 
-    g.setGradientFill (tokens::verticalSurfaceGradient (base, bounds));
-    g.fillRoundedRectangle (bounds, tokens::buttonCornerRadius);
+    ui::drawGlassPanel (g, bounds, base, tokens::buttonCornerRadius, getToggleState());
 
-    g.setColour (tokens::highlightBase.withAlpha (tokens::panelTopHighlightAlpha));
-    g.drawHorizontalLine (0, bounds.getX() + tokens::buttonCornerRadius, bounds.getRight() - tokens::buttonCornerRadius);
+    auto content = getLocalBounds().reduced (tokens::trackHeaderSmallGap, 0);
+    const auto iconColour = isEnabled() ? tokens::textPrimary : tokens::textTertiary;
 
-    g.setColour (tokens::borderSubtle.withAlpha (tokens::panelBorderAlpha));
-    g.drawRoundedRectangle (bounds, tokens::buttonCornerRadius, 1.0f);
+    if (icon != ui::Icon::none)
+    {
+        auto iconBounds = content.removeFromLeft (tokens::toolbarIconSize + tokens::trackHeaderSmallGap)
+                                 .withSizeKeepingCentre (tokens::toolbarIconSize, tokens::toolbarIconSize)
+                                 .toFloat();
+        ui::drawIcon (g, icon, iconBounds, iconColour, tokens::iconStrokeWidth);
+    }
 
     g.setColour (isEnabled() ? tokens::textPrimary : tokens::textTertiary);
     g.setFont (tokens::fontBody());
-    g.drawFittedText (getButtonText(), getLocalBounds(), juce::Justification::centred, 1);
+    g.drawFittedText (getButtonText(), content, juce::Justification::centred, 1);
+}
+
+void ToolbarButton::setIcon (ui::Icon iconToUse)
+{
+    icon = iconToUse;
+    repaint();
 }
 
 Toolbar::Toolbar()
@@ -99,7 +111,7 @@ Toolbar::Toolbar()
         label.setFont (tokens::fontMonospace());
         label.setJustificationType (juce::Justification::centred);
         label.setColour (juce::Label::textColourId, tokens::textSecondary);
-        label.setColour (juce::Label::backgroundColourId, tokens::surfaceRaised);
+        label.setColour (juce::Label::backgroundColourId, tokens::surfaceRaised.withAlpha (0.0f));
         label.setColour (juce::Label::outlineColourId, tokens::borderSubtle.withAlpha (tokens::panelBorderAlpha));
     };
 
@@ -117,17 +129,50 @@ Toolbar::Toolbar()
 void Toolbar::paint (juce::Graphics& g)
 {
     auto bounds = getLocalBounds().toFloat();
-    g.setGradientFill (tokens::verticalSurfaceGradient (tokens::surfaceElevated, bounds));
+    juce::ColourGradient gradient { tokens::surfaceChrome.brighter (tokens::surfaceGradientAmount),
+                                    bounds.getX(),
+                                    bounds.getY(),
+                                    tokens::surfaceElevated.darker (tokens::surfaceGradientAmount),
+                                    bounds.getX(),
+                                    bounds.getBottom(),
+                                    false };
+    gradient.addColour (tokens::toolbarGradientMidpoint, tokens::surfaceElevated);
+    g.setGradientFill (gradient);
     g.fillAll();
+
+    ui::drawSoftGlow (g, wordmarkLabel.getBounds().toFloat().expanded (tokens::glowRadius),
+                      tokens::accentPrimary,
+                      tokens::accentWashAlpha);
 
     if (playPauseButton.getWidth() > 0 && stopButton.getWidth() > 0)
     {
         auto transportBounds = playPauseButton.getBounds().getUnion (stopButton.getBounds())
+                                                    .getUnion (recordButton.getBounds())
+                                                    .getUnion (loopButton.getBounds())
+                                                    .getUnion (clickButton.getBounds())
                                                     .expanded (tokens::trackHeaderSmallGap, 0)
                                                     .toFloat();
-        g.setColour (tokens::surfaceRaised.withAlpha (tokens::panelBorderAlpha));
-        g.fillRoundedRectangle (transportBounds, tokens::buttonCornerRadius);
+        ui::drawGlassPanel (g, transportBounds, tokens::surfaceInset, tokens::controlGroupRadius, false);
     }
+
+    if (wordmarkLabel.getWidth() > 0)
+    {
+        auto iconBounds = wordmarkLabel.getBounds()
+                                       .withX (wordmarkLabel.getX() - tokens::toolbarWordmarkIconSize - tokens::trackHeaderSmallGap)
+                                       .withWidth (tokens::toolbarWordmarkIconSize)
+                                       .withSizeKeepingCentre (tokens::toolbarWordmarkIconSize,
+                                                               tokens::toolbarWordmarkIconSize)
+                                       .toFloat();
+        ui::drawIcon (g, ui::Icon::waveform, iconBounds, tokens::accentPrimary, tokens::thickIconStrokeWidth);
+        ui::drawTinySparkles (g, iconBounds.expanded (tokens::trackHeaderSmallGap), tokens::accentCyan);
+    }
+
+    for (const auto* label : { &tempoLabel, &signatureLabel, &positionLabel })
+        if (label->getWidth() > 0)
+            ui::drawGlassPanel (g, label->getBounds().toFloat().reduced (0.5f),
+                                tokens::surfaceInset,
+                                tokens::buttonCornerRadius,
+                                false);
 
     g.setColour (tokens::borderSubtle.withAlpha (tokens::panelBorderAlpha));
     g.drawHorizontalLine (getHeight() - 1, 0.0f, static_cast<float> (getWidth()));
@@ -139,7 +184,9 @@ void Toolbar::resized()
     auto row = bounds.withHeight (tokens::toolbarButtonHeight)
                      .withCentre ({ bounds.getCentreX(), getHeight() / 2 });
 
-    wordmarkLabel.setBounds (row.removeFromLeft (tokens::toolbarWordmarkWidth));
+    auto wordmark = row.removeFromLeft (tokens::toolbarWordmarkWidth);
+    wordmark.removeFromLeft (tokens::toolbarWordmarkIconSize + tokens::trackHeaderSmallGap);
+    wordmarkLabel.setBounds (wordmark);
     row.removeFromLeft (tokens::toolbarGap);
     loadButton.setBounds (row.removeFromLeft (tokens::toolbarButtonWidth));
     row.removeFromLeft (tokens::toolbarGap);
@@ -177,6 +224,7 @@ void Toolbar::setPlaying (bool shouldShowPlaying)
 {
     isPlaying = shouldShowPlaying;
     playPauseButton.setButtonText (isPlaying ? "Pause" : "Play");
+    playPauseButton.setIcon (isPlaying ? ui::Icon::pause : ui::Icon::play);
 }
 
 void Toolbar::setPosition (double positionSeconds, double lengthSeconds)

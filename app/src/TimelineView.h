@@ -46,6 +46,7 @@ private:
         explicit TimelineContent (AudioEngine& engine);
 
         void paint (juce::Graphics& g) override;
+        void paintOverChildren (juce::Graphics& g) override;
         void resized() override;
         void mouseDown (const juce::MouseEvent& event) override;
         void mouseWheelMove (const juce::MouseEvent& event, const juce::MouseWheelDetails& wheel) override;
