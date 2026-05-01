@@ -36,9 +36,12 @@ void ToolbarButton::paintButton (juce::Graphics& g, bool isMouseOverButton, bool
 
 Toolbar::Toolbar()
 {
+    addAndMakeVisible (wordmarkLabel);
     addAndMakeVisible (loadButton);
     addAndMakeVisible (playPauseButton);
     addAndMakeVisible (stopButton);
+    addAndMakeVisible (tempoLabel);
+    addAndMakeVisible (signatureLabel);
     addAndMakeVisible (positionLabel);
 
     loadButton.onClick = [this]
@@ -59,9 +62,26 @@ Toolbar::Toolbar()
             onStopClicked();
     };
 
-    positionLabel.setFont (tokens::fontMonospace());
-    positionLabel.setJustificationType (juce::Justification::centredLeft);
-    positionLabel.setColour (juce::Label::textColourId, tokens::textSecondary);
+    wordmarkLabel.setText ("Tracklab", juce::dontSendNotification);
+    wordmarkLabel.setFont (tokens::fontHeader());
+    wordmarkLabel.setJustificationType (juce::Justification::centredLeft);
+    wordmarkLabel.setColour (juce::Label::textColourId, tokens::textPrimary);
+
+    auto configurePill = [] (juce::Label& label)
+    {
+        label.setFont (tokens::fontMonospace());
+        label.setJustificationType (juce::Justification::centred);
+        label.setColour (juce::Label::textColourId, tokens::textSecondary);
+        label.setColour (juce::Label::backgroundColourId, tokens::surfaceRaised);
+        label.setColour (juce::Label::outlineColourId, tokens::borderSubtle.withAlpha (tokens::panelBorderAlpha));
+    };
+
+    configurePill (tempoLabel);
+    configurePill (signatureLabel);
+    configurePill (positionLabel);
+
+    tempoLabel.setText ("120.00 BPM", juce::dontSendNotification);
+    signatureLabel.setText ("4/4", juce::dontSendNotification);
 
     setHasLoadedFile (false);
     setPosition (0.0, 0.0);
@@ -73,6 +93,15 @@ void Toolbar::paint (juce::Graphics& g)
     g.setGradientFill (tokens::verticalSurfaceGradient (tokens::surfaceElevated, bounds));
     g.fillAll();
 
+    if (playPauseButton.getWidth() > 0 && stopButton.getWidth() > 0)
+    {
+        auto transportBounds = playPauseButton.getBounds().getUnion (stopButton.getBounds())
+                                                    .expanded (tokens::trackHeaderSmallGap, 0)
+                                                    .toFloat();
+        g.setColour (tokens::surfaceRaised.withAlpha (tokens::panelBorderAlpha));
+        g.fillRoundedRectangle (transportBounds, tokens::buttonCornerRadius);
+    }
+
     g.setColour (tokens::borderSubtle.withAlpha (tokens::panelBorderAlpha));
     g.drawHorizontalLine (getHeight() - 1, 0.0f, static_cast<float> (getWidth()));
 }
@@ -83,11 +112,22 @@ void Toolbar::resized()
     auto row = bounds.withHeight (tokens::toolbarButtonHeight)
                      .withCentre ({ bounds.getCentreX(), getHeight() / 2 });
 
+    wordmarkLabel.setBounds (row.removeFromLeft (tokens::toolbarWordmarkWidth));
+    row.removeFromLeft (tokens::toolbarGap);
     loadButton.setBounds (row.removeFromLeft (tokens::toolbarButtonWidth));
     row.removeFromLeft (tokens::toolbarGap);
-    playPauseButton.setBounds (row.removeFromLeft (tokens::toolbarTransportButtonWidth));
+
+    auto transportGroup = row.removeFromLeft (tokens::toolbarTransportGroupWidth).reduced (tokens::trackHeaderSmallGap, 0);
+    playPauseButton.setBounds (transportGroup.removeFromLeft (tokens::toolbarTransportButtonWidth));
+    transportGroup.removeFromLeft (tokens::trackHeaderSmallGap);
+    stopButton.setBounds (transportGroup.removeFromLeft (tokens::toolbarTransportButtonWidth));
+
     row.removeFromLeft (tokens::toolbarGap);
-    stopButton.setBounds (row.removeFromLeft (tokens::toolbarTransportButtonWidth));
+    tempoLabel.setBounds (row.removeFromLeft (tokens::toolbarTempoWidth)
+                              .withSizeKeepingCentre (tokens::toolbarTempoWidth, tokens::toolbarPillHeight));
+    row.removeFromLeft (tokens::toolbarGap);
+    signatureLabel.setBounds (row.removeFromLeft (tokens::toolbarSignatureWidth)
+                                  .withSizeKeepingCentre (tokens::toolbarSignatureWidth, tokens::toolbarPillHeight));
     row.removeFromLeft (tokens::toolbarGap);
     positionLabel.setBounds (row.removeFromLeft (tokens::toolbarPositionWidth));
 }
@@ -97,7 +137,7 @@ void Toolbar::setHasLoadedFile (bool hasFile)
     hasLoadedFile = hasFile;
     playPauseButton.setEnabled (hasLoadedFile);
     stopButton.setEnabled (hasLoadedFile);
-    loadButton.setButtonText (hasLoadedFile ? "Load different file" : "Load audio file");
+    loadButton.setButtonText ("Load");
 }
 
 void Toolbar::setPlaying (bool shouldShowPlaying)

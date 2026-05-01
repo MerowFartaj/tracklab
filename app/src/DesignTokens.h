@@ -32,15 +32,23 @@ inline const juce::Colour trackColors[] =
     juce::Colour { 0xFFFF375F }
 };
 
-static constexpr int toolbarHeight = 44;
+static constexpr int toolbarHeight = 52;
 static constexpr int trackHeightDefault = 72;
 static constexpr int trackHeightCompact = 48;
 static constexpr int rulerHeight = 28;
-static constexpr int trackHeaderWidth = 180;
+static constexpr int trackHeaderWidth = 200;
+static constexpr int mixerDefaultHeight = 240;
+static constexpr int mixerMinHeight = 160;
+static constexpr int mixerMaxHeight = 400;
+static constexpr int splitterHeight = 6;
+static constexpr int addTrackHeight = 36;
 
 static constexpr float playheadWidth = 1.0f;
 static constexpr float clipCornerRadius = 3.0f;
 static constexpr float buttonCornerRadius = 4.0f;
+static constexpr float panelCornerRadius = 0.0f;
+static constexpr float knobRadiusSmall = 8.0f;
+static constexpr float knobRadiusMixer = 12.0f;
 
 static constexpr float fontHeaderSize = 13.0f;
 static constexpr float fontBodySize = 11.0f;
@@ -62,25 +70,44 @@ static constexpr float beatLineAlpha = 0.20f;
 static constexpr float subdivisionLineAlpha = 0.16f;
 static constexpr float waveformPeakAlpha = 0.90f;
 static constexpr float waveformRmsAlpha = 0.60f;
+static constexpr float selectedClipBorderAlpha = 1.0f;
+static constexpr float timelineHintAlpha = 0.72f;
+static constexpr float meterInactiveAlpha = 0.18f;
+static constexpr float meterYellowPoint = 0.72f;
+static constexpr float meterRedPoint = 0.90f;
 
 static constexpr int toolbarPaddingX = 12;
 static constexpr int toolbarButtonHeight = 28;
-static constexpr int toolbarButtonWidth = 112;
-static constexpr int toolbarTransportButtonWidth = 72;
+static constexpr int toolbarButtonWidth = 104;
+static constexpr int toolbarTransportButtonWidth = 58;
 static constexpr int toolbarGap = 8;
 static constexpr int toolbarPositionWidth = 180;
+static constexpr int toolbarWordmarkWidth = 112;
+static constexpr int toolbarTransportGroupWidth = 138;
+static constexpr int toolbarPillHeight = 26;
+static constexpr int toolbarTempoWidth = 88;
+static constexpr int toolbarSignatureWidth = 42;
 
 static constexpr int trackHeaderPadding = 12;
-static constexpr int trackColorBarWidth = 4;
+static constexpr int trackColorBarWidth = 6;
+static constexpr int trackNumberWidth = 24;
 static constexpr int clipVerticalPadding = 8;
 static constexpr int waveformPadding = 4;
 static constexpr int minimumReadableClipWidth = 80;
+static constexpr int trackHeaderButtonSize = 18;
+static constexpr int trackHeaderSmallGap = 6;
+static constexpr int trackHeaderVolumeWidth = 80;
+static constexpr int trackHeaderPanSize = 16;
+static constexpr int clipTrimHandleWidth = 6;
+static constexpr int clipDragSnapPixels = 3;
 
 static constexpr float timelineDefaultPixelsPerSecond = 80.0f;
 static constexpr float timelineMinPixelsPerSecond = 5.0f;
 static constexpr float timelineMaxPixelsPerSecond = 500.0f;
 static constexpr double timelineEmptyLengthSeconds = 30.0;
 static constexpr double timelineTrailingSeconds = 4.0;
+static constexpr double timelineBarSnapSeconds = 2.0;
+static constexpr double timelineFineSnapSeconds = 0.25;
 static constexpr double minorTickSeconds = 0.25;
 static constexpr double majorTickSeconds = 1.0;
 static constexpr double defaultTempoBpm = 120.0;
@@ -93,6 +120,17 @@ static constexpr int playheadRepaintPadding = 4;
 static constexpr int waveformSamplesPerPixel = 2;
 static constexpr int waveformReadBlockSize = 32768;
 static constexpr int waveformMaxChannels = 2;
+
+static constexpr int mixerStripWidth = 80;
+static constexpr int mixerMasterStripWidth = 100;
+static constexpr int mixerStripPadding = 8;
+static constexpr int mixerTrackColorBarHeight = 6;
+static constexpr int mixerPanSize = 24;
+static constexpr int mixerButtonSize = 18;
+static constexpr int mixerMeterWidth = 4;
+static constexpr int mixerFaderHeight = 76;
+static constexpr int mixerReadoutHeight = 16;
+static constexpr int mixerTimerHz = 30;
 
 static constexpr float wheelZoomBase = 1.18f;
 static constexpr float wheelZoomScale = 4.0f;

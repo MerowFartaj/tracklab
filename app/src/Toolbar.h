@@ -34,6 +34,9 @@ private:
     ToolbarButton loadButton { "Load" };
     ToolbarButton playPauseButton { "Play" };
     ToolbarButton stopButton { "Stop" };
+    juce::Label wordmarkLabel;
+    juce::Label tempoLabel;
+    juce::Label signatureLabel;
     juce::Label positionLabel;
 
     bool hasLoadedFile = false;

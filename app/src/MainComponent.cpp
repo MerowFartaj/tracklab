@@ -8,8 +8,10 @@ MainComponent::MainComponent()
 {
     audioEngine = std::make_unique<AudioEngine>();
     timelineView = std::make_unique<TimelineView> (*audioEngine);
+    mixerPanel = std::make_unique<MixerPanel> (*audioEngine);
 
     setOpaque (true);
+    setWantsKeyboardFocus (true);
 
     toolbar.onLoadClicked = [this]
     {
@@ -34,8 +36,15 @@ MainComponent::MainComponent()
         timelineView->refreshPlayhead();
     };
 
+    timelineView->onProjectChanged = [this]
+    {
+        mixerPanel->refreshFromEngine();
+        updateTransportState();
+    };
+
     addAndMakeVisible (toolbar);
     addAndMakeVisible (*timelineView);
+    addAndMakeVisible (*mixerPanel);
 
     updateTransportState();
     startTimerHz (30);
@@ -44,13 +53,118 @@ MainComponent::MainComponent()
 void MainComponent::paint (juce::Graphics& g)
 {
     g.fillAll (tokens::backgroundBase);
+
+    auto splitter = getSplitterBounds().toFloat();
+    g.setColour (tokens::surfaceRaised);
+    g.fillRect (splitter);
+    g.setColour (tokens::highlightBase.withAlpha (tokens::panelTopHighlightAlpha));
+    g.drawHorizontalLine (juce::roundToInt (splitter.getY()), splitter.getX(), splitter.getRight());
+    g.setColour (tokens::borderSubtle.withAlpha (tokens::panelBorderAlpha));
+    g.drawHorizontalLine (juce::roundToInt (splitter.getBottom() - 1.0f), splitter.getX(), splitter.getRight());
 }
 
 void MainComponent::resized()
 {
     auto bounds = getLocalBounds();
     toolbar.setBounds (bounds.removeFromTop (tokens::toolbarHeight));
+
+    const auto clampedMixerHeight = juce::jlimit (tokens::mixerMinHeight,
+                                                  tokens::mixerMaxHeight,
+                                                  mixerHeight);
+    mixerHeight = clampedMixerHeight;
+
+    mixerPanel->setBounds (bounds.removeFromBottom (mixerHeight));
+    bounds.removeFromBottom (tokens::splitterHeight);
     timelineView->setBounds (bounds);
+}
+
+void MainComponent::mouseDown (const juce::MouseEvent& event)
+{
+    grabKeyboardFocus();
+
+    if (getSplitterBounds().contains (event.getPosition()))
+    {
+        draggingSplitter = true;
+        splitterDragStartY = event.getPosition().y;
+        mixerHeightAtDragStart = mixerHeight;
+    }
+}
+
+void MainComponent::mouseDrag (const juce::MouseEvent& event)
+{
+    if (! draggingSplitter)
+        return;
+
+    const auto deltaY = splitterDragStartY - event.getPosition().y;
+    mixerHeight = juce::jlimit (tokens::mixerMinHeight,
+                                tokens::mixerMaxHeight,
+                                mixerHeightAtDragStart + deltaY);
+    resized();
+    repaint();
+}
+
+void MainComponent::mouseUp (const juce::MouseEvent&)
+{
+    draggingSplitter = false;
+}
+
+bool MainComponent::keyPressed (const juce::KeyPress& key)
+{
+    const auto modifiers = key.getModifiers();
+    const auto character = key.getTextCharacter();
+
+    if (key == juce::KeyPress::spaceKey)
+    {
+        if (audioEngine->isPlaying())
+            audioEngine->pause();
+        else
+            audioEngine->play();
+
+        updateTransportState();
+        timelineView->refreshPlayhead();
+        return true;
+    }
+
+    if (! modifiers.isCommandDown() && (character == 's' || character == 'S'))
+    {
+        audioEngine->stop();
+        updateTransportState();
+        timelineView->refreshPlayhead();
+        return true;
+    }
+
+    if (modifiers.isCommandDown() && (character == 't' || character == 'T'))
+    {
+        timelineView->addTrack();
+        mixerPanel->refreshFromEngine();
+        return true;
+    }
+
+    if (modifiers.isCommandDown() && (character == 'd' || character == 'D'))
+    {
+        timelineView->duplicateSelectedClips();
+        return true;
+    }
+
+    if (modifiers.isCommandDown() && (character == 'a' || character == 'A'))
+    {
+        timelineView->selectAllClips();
+        return true;
+    }
+
+    if (key == juce::KeyPress::deleteKey || key == juce::KeyPress::backspaceKey)
+    {
+        timelineView->deleteSelectedClips();
+        return true;
+    }
+
+    if (key == juce::KeyPress::escapeKey)
+    {
+        timelineView->deselectAllClips();
+        return true;
+    }
+
+    return false;
 }
 
 void MainComponent::loadAudioFile()
@@ -83,7 +197,14 @@ void MainComponent::handleFileChosen (const juce::File& file)
         return;
     }
 
-    if (! audioEngine->loadFile (file))
+    const auto tracks = audioEngine->getAllTrackInfo();
+
+    if (tracks.empty())
+        audioEngine->addTrack ("Track 01");
+
+    const auto targetTrackId = audioEngine->getAllTrackInfo().front().id;
+
+    if (audioEngine->addClipToTrack (targetTrackId, file, 0.0) <= 0)
     {
         juce::AlertWindow::showMessageBoxAsync (juce::AlertWindow::WarningIcon,
                                                 "Could not load file",
@@ -91,8 +212,8 @@ void MainComponent::handleFileChosen (const juce::File& file)
         return;
     }
 
-    hasLoadedFile = true;
-    timelineView->setAudioFile (file, audioEngine->getLengthSeconds());
+    timelineView->refreshFromEngine();
+    mixerPanel->refreshFromEngine();
     updateTransportState();
 }
 
@@ -109,8 +230,9 @@ void MainComponent::updateTransportState()
     }
 
     const auto position = juce::jlimit (0.0, length, rawPosition);
+    const auto hasClips = ! audioEngine->getAllClips().empty();
 
-    toolbar.setHasLoadedFile (hasLoadedFile);
+    toolbar.setHasLoadedFile (hasClips);
     toolbar.setPlaying (playing);
     toolbar.setPosition (position, length);
 }
@@ -118,6 +240,14 @@ void MainComponent::updateTransportState()
 void MainComponent::timerCallback()
 {
     updateTransportState();
+}
+
+juce::Rectangle<int> MainComponent::getSplitterBounds() const
+{
+    return { 0,
+             getHeight() - mixerHeight - tokens::splitterHeight,
+             getWidth(),
+             tokens::splitterHeight };
 }
 
 bool MainComponent::isSupportedFile (const juce::File& file)

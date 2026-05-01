@@ -51,6 +51,8 @@ target_sources(tracklab_app
         app/src/MainComponent.h
         app/src/MainWindow.cpp
         app/src/MainWindow.h
+        app/src/MixerPanel.cpp
+        app/src/MixerPanel.h
         app/src/Playhead.cpp
         app/src/Playhead.h
         app/src/TimelineRuler.cpp
@@ -75,6 +77,8 @@ source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/app/src
         app/src/MainComponent.h
         app/src/MainWindow.cpp
         app/src/MainWindow.h
+        app/src/MixerPanel.cpp
+        app/src/MixerPanel.h
         app/src/Playhead.cpp
         app/src/Playhead.h
         app/src/TimelineRuler.cpp

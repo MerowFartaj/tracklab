@@ -7,7 +7,7 @@ namespace tokens = tracklab::design;
 AudioClipView::AudioClipView()
 {
     formatManager.registerBasicFormats();
-    setInterceptsMouseClicks (false, false);
+    setWantsKeyboardFocus (false);
 }
 
 void AudioClipView::paint (juce::Graphics& g)
@@ -33,23 +33,93 @@ void AudioClipView::paint (juce::Graphics& g)
     g.setColour (tokens::highlightBase.withAlpha (tokens::clipTopHighlightAlpha));
     g.drawHorizontalLine (1, bounds.getX() + tokens::clipCornerRadius, bounds.getRight() - tokens::clipCornerRadius);
 
-    g.setColour (trackColour.darker (tokens::surfaceGradientAmount).withAlpha (tokens::panelBorderAlpha));
-    g.drawRoundedRectangle (bounds, tokens::clipCornerRadius, 1.0f);
+    if (getWidth() >= tokens::minimumReadableClipWidth && ! peaks.empty() && ! rms.empty())
+    {
+        auto waveformBounds = bounds.reduced (tokens::waveformPadding, tokens::waveformPadding);
+        drawWaveformLayer (g, waveformBounds, peaks, trackColour.withAlpha (tokens::waveformPeakAlpha));
+        drawWaveformLayer (g, waveformBounds, rms, trackColour.withAlpha (tokens::waveformRmsAlpha));
+    }
 
-    if (getWidth() < tokens::minimumReadableClipWidth || peaks.empty() || rms.empty())
-        return;
+    g.setColour (selected ? tokens::accentSecondary.withAlpha (tokens::selectedClipBorderAlpha)
+                          : trackColour.darker (tokens::surfaceGradientAmount).withAlpha (tokens::panelBorderAlpha));
+    g.drawRoundedRectangle (bounds, tokens::clipCornerRadius, selected ? 1.5f : 1.0f);
 
-    auto waveformBounds = bounds.reduced (tokens::waveformPadding, tokens::waveformPadding);
-    drawWaveformLayer (g, waveformBounds, peaks, trackColour.withAlpha (tokens::waveformPeakAlpha));
-    drawWaveformLayer (g, waveformBounds, rms, trackColour.withAlpha (tokens::waveformRmsAlpha));
+    if (selected)
+    {
+        g.setColour (tokens::accentSecondary.withAlpha (tokens::selectedGlowAlpha));
+        g.drawRoundedRectangle (bounds.expanded (2.0f), tokens::clipCornerRadius + 2.0f, 1.0f);
+    }
+
+    auto labelBounds = getLocalBounds().reduced (tokens::toolbarGap, 0);
+    g.setColour (tokens::textPrimary);
+    g.setFont (tokens::fontMetadata());
+    g.drawText (clipInfo.name, labelBounds.removeFromTop (18), juce::Justification::centredLeft, true);
 }
 
-void AudioClipView::setAudioFile (const juce::File& file, double lengthSeconds, juce::Colour colour)
+void AudioClipView::mouseDown (const juce::MouseEvent& event)
 {
-    audioFile = file;
-    clipLengthSeconds = lengthSeconds;
+    if (event.mods.isPopupMenu())
+    {
+        if (onSelect)
+            onSelect (clipInfo.id, event.mods.isShiftDown());
+
+        showContextMenu();
+        return;
+    }
+
+    if (onSelect)
+        onSelect (clipInfo.id, event.mods.isShiftDown());
+
+    if (event.position.x <= tokens::clipTrimHandleWidth)
+        dragMode = DragMode::trimStart;
+    else if (event.position.x >= getWidth() - tokens::clipTrimHandleWidth)
+        dragMode = DragMode::trimEnd;
+    else
+        dragMode = DragMode::move;
+}
+
+void AudioClipView::mouseDrag (const juce::MouseEvent& event)
+{
+    const auto distance = event.getDistanceFromDragStart();
+
+    if (distance < tokens::clipDragSnapPixels)
+        return;
+
+    if (dragMode == DragMode::move)
+        setTransform (juce::AffineTransform::translation (event.getDistanceFromDragStartX(),
+                                                          event.getDistanceFromDragStartY()));
+}
+
+void AudioClipView::mouseUp (const juce::MouseEvent& event)
+{
+    if (dragMode == DragMode::move && onMoveFinished)
+        onMoveFinished (clipInfo.id,
+                        static_cast<float> (event.getDistanceFromDragStartX()),
+                        static_cast<float> (event.getDistanceFromDragStartY()),
+                        event.mods.isShiftDown());
+    else if ((dragMode == DragMode::trimStart || dragMode == DragMode::trimEnd) && onTrimFinished)
+        onTrimFinished (clipInfo.id,
+                        dragMode == DragMode::trimStart,
+                        static_cast<float> (event.getDistanceFromDragStartX()),
+                        event.mods.isShiftDown());
+
+    setTransform ({});
+    dragMode = DragMode::none;
+}
+
+void AudioClipView::setClipInfo (ClipInfo info, juce::Colour colour, bool shouldBeSelected)
+{
+    const auto shouldRebuild = clipInfo.file != info.file
+                            || ! juce::approximatelyEqual (clipInfo.lengthSeconds, info.lengthSeconds)
+                            || ! juce::approximatelyEqual (clipInfo.sourceOffsetSeconds, info.sourceOffsetSeconds);
+
+    clipInfo = std::move (info);
     trackColour = colour;
-    rebuildWaveformCache();
+    selected = shouldBeSelected;
+
+    if (shouldRebuild)
+        rebuildWaveformCache();
+
     repaint();
 }
 
@@ -65,8 +135,7 @@ void AudioClipView::setPixelsPerSecond (double newPixelsPerSecond)
 
 void AudioClipView::clear()
 {
-    audioFile = juce::File();
-    clipLengthSeconds = 0.0;
+    clipInfo = {};
     cachedPixelWidth = 0;
     peaks.clear();
     rms.clear();
@@ -75,14 +144,14 @@ void AudioClipView::clear()
 
 void AudioClipView::rebuildWaveformCache()
 {
-    cachedPixelWidth = juce::roundToInt (clipLengthSeconds * pixelsPerSecond);
+    cachedPixelWidth = juce::roundToInt (clipInfo.lengthSeconds * pixelsPerSecond);
     peaks.clear();
     rms.clear();
 
-    if (! audioFile.existsAsFile() || clipLengthSeconds <= 0.0 || cachedPixelWidth <= 0)
+    if (! clipInfo.file.existsAsFile() || clipInfo.lengthSeconds <= 0.0 || cachedPixelWidth <= 0)
         return;
 
-    std::unique_ptr<juce::AudioFormatReader> reader (formatManager.createReaderFor (audioFile));
+    std::unique_ptr<juce::AudioFormatReader> reader (formatManager.createReaderFor (clipInfo.file));
 
     if (reader == nullptr || reader->lengthInSamples <= 0 || reader->numChannels == 0)
         return;
@@ -96,14 +165,18 @@ void AudioClipView::rebuildWaveformCache()
 
     const auto channelsToRead = juce::jlimit (1, tokens::waveformMaxChannels, static_cast<int> (reader->numChannels));
     juce::AudioBuffer<float> buffer (channelsToRead, tokens::waveformReadBlockSize);
-    const auto samplesPerCacheEntry = static_cast<double> (reader->lengthInSamples) / cacheSize;
+    const auto startSample = static_cast<juce::int64> (clipInfo.sourceOffsetSeconds * reader->sampleRate);
+    const auto samplesAvailable = juce::jmax<juce::int64> (0, reader->lengthInSamples - startSample);
+    const auto samplesToScan = juce::jmin<juce::int64> (samplesAvailable,
+                                                        static_cast<juce::int64> (clipInfo.lengthSeconds * reader->sampleRate));
+    const auto samplesPerCacheEntry = static_cast<double> (juce::jmax<juce::int64> (1, samplesToScan)) / cacheSize;
 
-    for (juce::int64 samplePosition = 0; samplePosition < reader->lengthInSamples;)
+    for (juce::int64 samplePosition = 0; samplePosition < samplesToScan;)
     {
         const auto samplesToRead = static_cast<int> (juce::jmin<juce::int64> (tokens::waveformReadBlockSize,
-                                                                              reader->lengthInSamples - samplePosition));
+                                                                              samplesToScan - samplePosition));
         buffer.clear();
-        reader->read (&buffer, 0, samplesToRead, samplePosition, true, channelsToRead > 1);
+        reader->read (&buffer, 0, samplesToRead, startSample + samplePosition, true, channelsToRead > 1);
 
         for (auto sample = 0; sample < samplesToRead; ++sample)
         {
@@ -181,4 +254,29 @@ void AudioClipView::drawWaveformLayer (juce::Graphics& g,
 
     g.setColour (colour);
     g.fillPath (path);
+}
+
+void AudioClipView::showContextMenu()
+{
+    juce::PopupMenu menu;
+    menu.addItem (1, "Delete");
+    menu.addItem (2, "Duplicate");
+    menu.addItem (3, "Rename");
+
+    const juce::Component::SafePointer<AudioClipView> safeThis (this);
+    menu.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (this),
+                        [safeThis] (int result)
+                        {
+                            auto* clipView = safeThis.getComponent();
+
+                            if (clipView == nullptr)
+                                return;
+
+                            if (result == 1 && clipView->onDeleteRequested)
+                                clipView->onDeleteRequested (clipView->clipInfo.id);
+                            else if (result == 2 && clipView->onDuplicateRequested)
+                                clipView->onDuplicateRequested (clipView->clipInfo.id);
+                            else if (result == 3 && clipView->onRenameRequested)
+                                clipView->onRenameRequested (clipView->clipInfo.id, clipView->clipInfo.name + " Copy");
+                        });
 }
