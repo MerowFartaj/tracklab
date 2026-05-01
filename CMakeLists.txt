@@ -47,7 +47,9 @@ target_sources(tracklab_app
         app/src/MainComponent.cpp
         app/src/MainComponent.h
         app/src/MainWindow.cpp
-        app/src/MainWindow.h)
+        app/src/MainWindow.h
+        engine/AudioEngine.cpp
+        engine/AudioEngine.h)
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/app/src
     PREFIX "App"
@@ -58,12 +60,18 @@ source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/app/src
         app/src/MainWindow.cpp
         app/src/MainWindow.h)
 
-# These flags keep optional JUCE network and browser features out of the
-# placeholder app until Tracklab needs them.
+# Let app and UI code include project headers from the repository root.
+target_include_directories(tracklab_app
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR})
+
+# These flags keep optional JUCE network and browser features out of the app
+# until Tracklab needs them. MP3 reading is enabled for the minimal loader.
 target_compile_definitions(tracklab_app
     PRIVATE
         JUCE_WEB_BROWSER=0
         JUCE_USE_CURL=0
+        JUCE_USE_MP3AUDIOFORMAT=1
         JUCE_APPLICATION_NAME_STRING="$<TARGET_PROPERTY:tracklab_app,JUCE_PRODUCT_NAME>"
         JUCE_APPLICATION_VERSION_STRING="$<TARGET_PROPERTY:tracklab_app,JUCE_VERSION>")
 
