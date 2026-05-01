@@ -61,15 +61,19 @@ See [docs/CONNECTORS.md](docs/CONNECTORS.md) for the current connector design.
 
 ## Status
 
-Tracklab is in pre-alpha and active planning. The repository currently contains documentation and scaffolding only. No audio engine code, UI code, or third-party submodules have been added yet.
+Tracklab is in pre-alpha and active planning. The repository now contains a minimal JUCE desktop app scaffold with JUCE and Tracktion Engine integrated as submodules. DAW features have not been implemented yet.
 
 See [docs/ROADMAP.md](docs/ROADMAP.md) for planned milestones.
 
 ## Building Locally
 
-Build instructions are coming soon. The first code pass will add the JUCE, Tracktion Engine, and CMake setup.
+Use the build helper script to configure and build the current macOS desktop app:
 
-See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for the planned local toolchain.
+```sh
+./scripts/build.sh
+```
+
+See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for prerequisites, submodule setup, and troubleshooting.
 
 ## Contributing
 

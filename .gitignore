@@ -26,9 +26,23 @@ Testing/
 JuceLibraryCode/
 Builds/
 
+# Third-party submodule build artifacts
+external/JUCE/build/
+external/JUCE/cmake-build-*/
+external/JUCE/**/Builds/
+external/JUCE/**/DerivedData/
+external/tracktion_engine/build/
+external/tracktion_engine/cmake-build-*/
+external/tracktion_engine/**/build/
+external/tracktion_engine/**/Builds/
+external/tracktion_engine/**/DerivedData/
+
 # Xcode and macOS
 .DS_Store
 *.xcuserstate
+*.xcuserdata/
+*.xcuserdatad/
+xcuserdata/
 *.xcworkspace/xcuserdata/
 *.xcodeproj/xcuserdata/
 *.xcscmblueprint

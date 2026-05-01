@@ -9,4 +9,8 @@ Planned scope:
 - Integration between UI, engine, AI, and connectors
 - macOS app packaging entry points
 
-No app source code has been added yet.
+Current state:
+
+- `src/Main.cpp` defines the JUCE application entry point.
+- `src/MainWindow.*` creates the native desktop window.
+- `src/MainComponent.*` paints the temporary placeholder screen.
