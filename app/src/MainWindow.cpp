@@ -7,10 +7,11 @@ MainWindow::MainWindow()
                       tracklab::design::backgroundBase,
                       DocumentWindow::allButtons)
 {
-    setUsingNativeTitleBar (true);
+    setUsingNativeTitleBar (false);
+    setTitleBarHeight (0);
     setResizable (true, true);
     setContentOwned (new MainComponent(), true);
-    centreWithSize (1280, 800);
+    centreWithSize (1600, 1000);
     setVisible (true);
 }
 

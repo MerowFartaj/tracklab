@@ -26,8 +26,11 @@ enum class Icon
     play,
     project,
     record,
+    rewind,
     search,
+    settings,
     sliders,
+    speaker,
     sparkle,
     stop,
     waveform

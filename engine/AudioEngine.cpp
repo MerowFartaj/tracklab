@@ -30,6 +30,15 @@ float dbToGain (float db)
 
 juce::String defaultTrackName (int index)
 {
+    static constexpr const char* demoNames[]
+    {
+        "Vocal Lead", "Backing Vocal", "Drums", "Bass",
+        "Guitar", "Keys", "Synth Pad", "FX Risers"
+    };
+
+    if (juce::isPositiveAndBelow (index, static_cast<int> (std::size (demoNames))))
+        return demoNames[static_cast<size_t> (index)];
+
     return juce::String::formatted ("Track %02d", index + 1);
 }
 
@@ -71,7 +80,6 @@ struct AudioEngine::Impl
         : engine ("Tracklab"),
           edit (te::createEmptyEdit (engine, {}))
     {
-        edit->getTransport().ensureContextAllocated (true);
         setTempoBpm (projectInfo.tempoBpm);
         setTimeSignature (projectInfo.timeSignatureNumerator, projectInfo.timeSignatureDenominator);
         setMetronomeEnabled (projectInfo.metronomeEnabled);
@@ -162,13 +170,7 @@ struct AudioEngine::Impl
     bool loadFile (const juce::File& file)
     {
         stop();
-
-        for (auto& [clipId, clip] : clips)
-            if (clip.clip != nullptr)
-                clip.clip->removeFromParent();
-
-        clips.clear();
-        loadedFile = juce::File();
+        clearClips();
 
         const auto targetTrack = tracks.empty() ? addTrack (defaultTrackName (0)) : tracks.front().id;
         const auto clipId = addClipToTrack (targetTrack, file, 0.0);
@@ -208,7 +210,6 @@ struct AudioEngine::Impl
 
         attachTrackMeterClient (model);
         tracks.push_back (std::move (model));
-        edit->getTransport().ensureContextAllocated (true);
         return trackId;
     }
 
@@ -399,6 +400,17 @@ struct AudioEngine::Impl
             clipIterator->second.clip->removeFromParent();
 
         clips.erase (clipIterator);
+        updateTransportRange();
+    }
+
+    void clearClips()
+    {
+        for (auto& [clipId, clip] : clips)
+            if (clip.clip != nullptr)
+                clip.clip->removeFromParent();
+
+        clips.clear();
+        loadedFile = juce::File();
         updateTransportRange();
     }
 
@@ -660,6 +672,7 @@ struct AudioEngine::Impl
         if (transport.getPosition().inSeconds() >= getLengthSeconds())
             transport.setPosition (tracktion::TimePosition());
 
+        transport.ensureContextAllocated (true);
         transport.play (false);
     }
 
@@ -803,7 +816,9 @@ struct AudioEngine::Impl
                                       tracktion::TimePosition::fromSeconds (end) });
 
         transport.looping = projectInfo.loopEnabled;
-        transport.ensureContextAllocated (true);
+
+        if (! clips.empty())
+            transport.ensureContextAllocated (true);
     }
 
     void applyClipInfoState (int clipId, const ClipInfo& info)

@@ -2,6 +2,8 @@
 
 #include "UiDrawing.h"
 
+#include <cmath>
+
 namespace tokens = tracklab::design;
 namespace ui = tracklab::ui;
 
@@ -180,7 +182,12 @@ void MixerPanel::ChannelStrip::setMaster (float volume)
 
 void MixerPanel::ChannelStrip::setMeterLevel (float level)
 {
-    meterLevel = juce::jlimit (0.0f, 1.0f, level);
+    const auto nextLevel = juce::jlimit (0.0f, 1.0f, level);
+
+    if (std::abs (nextLevel - meterLevel) < 0.002f)
+        return;
+
+    meterLevel = nextLevel;
     repaint (getMeterBounds());
 }
 
@@ -233,15 +240,30 @@ void MixerPanel::paint (juce::Graphics& g)
     gradient.addColour (tokens::toolbarGradientMidpoint, tokens::surfaceElevated);
     g.setGradientFill (gradient);
     g.fillAll();
-    ui::drawSubtleStripes (g, bounds, tokens::highlightBase, tokens::decorativeStripeSpacing * 2);
+
+    auto tabs = getLocalBounds().removeFromTop (tokens::mixerTabsHeight).reduced (8, 4);
+    auto editTab = tabs.removeFromLeft (58);
+    ui::drawGlassPanel (g, editTab.toFloat(), tokens::surfaceRaised, tokens::buttonCornerRadius, true);
+    g.setColour (tokens::accentPrimary);
+    g.drawHorizontalLine (editTab.getBottom() - 1, editTab.getX() + 6.0f, editTab.getRight() - 6.0f);
+    g.setColour (tokens::textPrimary);
+    g.setFont (tokens::fontMetadata().withStyle (juce::Font::bold));
+    g.drawText ("Edit", editTab, juce::Justification::centred, false);
+    tabs.removeFromLeft (4);
+    auto optionsTab = tabs.removeFromLeft (76);
+    ui::drawGlassPanel (g, optionsTab.toFloat(), tokens::surfaceInset, tokens::buttonCornerRadius, false);
+    g.setColour (tokens::textSecondary);
+    g.drawText ("Options", optionsTab, juce::Justification::centred, false);
 
     g.setColour (tokens::borderSubtle.withAlpha (tokens::panelBorderAlpha));
     g.drawHorizontalLine (0, 0.0f, static_cast<float> (getWidth()));
+    g.drawHorizontalLine (tokens::mixerTabsHeight - 1, 0.0f, static_cast<float> (getWidth()));
 }
 
 void MixerPanel::resized()
 {
     auto bounds = getLocalBounds();
+    bounds.removeFromTop (tokens::mixerTabsHeight);
     auto masterBounds = bounds.removeFromRight (tokens::mixerMasterStripWidth);
     bounds.removeFromRight (tokens::toolbarGap);
     viewport.setBounds (bounds);

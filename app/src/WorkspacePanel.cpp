@@ -125,6 +125,7 @@ WorkspacePanel::WorkspacePanel (AudioEngine& engine)
         addAndMakeVisible (item);
 
     browserSearch.setTextToShowWhenEmpty ("Search sounds and devices", tokens::textTertiary);
+    browserSearch.setWantsKeyboardFocus (false);
     browserSearch.setFont (tokens::fontBody());
     browserSearch.setColour (juce::TextEditor::backgroundColourId, tokens::surfaceRaised);
     browserSearch.setColour (juce::TextEditor::textColourId, tokens::textPrimary);
@@ -166,6 +167,18 @@ WorkspacePanel::WorkspacePanel (AudioEngine& engine)
     configureButton (splitButton);
     configureButton (eqButton);
     configureButton (pitchButton);
+
+    for (auto* component : { static_cast<juce::Component*> (&projectHeader),
+                             static_cast<juce::Component*> (&tempoSlider),
+                             static_cast<juce::Component*> (&signatureBox),
+                             static_cast<juce::Component*> (&keyBox),
+                             static_cast<juce::Component*> (&snapBox),
+                             static_cast<juce::Component*> (&loopButton),
+                             static_cast<juce::Component*> (&clickButton),
+                             static_cast<juce::Component*> (&recordButton) })
+    {
+        component->setVisible (false);
+    }
 
     tempoSlider.onValueChange = [this]
     {
@@ -296,7 +309,7 @@ WorkspacePanel::WorkspacePanel (AudioEngine& engine)
 void WorkspacePanel::paint (juce::Graphics& g)
 {
     auto bounds = getLocalBounds().toFloat();
-    juce::ColourGradient gradient { tokens::surfaceChrome,
+    juce::ColourGradient gradient { tokens::surfaceElevated,
                                     bounds.getX(),
                                     bounds.getY(),
                                     tokens::surfaceInset,
@@ -307,18 +320,10 @@ void WorkspacePanel::paint (juce::Graphics& g)
     g.setGradientFill (gradient);
     g.fillAll();
 
-    ui::drawSoftGlow (g,
-                      getLocalBounds().toFloat().withSizeKeepingCentre (getWidth() * 0.90f,
-                                                                        getHeight() * 0.34f)
-                                               .translated (-getWidth() * 0.28f, getHeight() * 0.10f),
-                      tokens::accentPrimary,
-                      tokens::accentWashAlpha);
-
     g.setColour (tokens::borderSubtle.withAlpha (tokens::panelBorderAlpha));
     g.drawVerticalLine (getWidth() - 1, 0.0f, static_cast<float> (getHeight()));
 
     paintSectionHeader (g, browserHeader.getBounds(), "Browser");
-    paintSectionHeader (g, projectHeader.getBounds(), "Project");
     paintSectionHeader (g, clipHeader.getBounds(), "Clip");
     paintSectionHeader (g, deviceHeader.getBounds(), "Devices");
 
@@ -326,6 +331,27 @@ void WorkspacePanel::paint (juce::Graphics& g)
                                       .withSizeKeepingCentre (tokens::iconSizeSmall, tokens::iconSizeSmall)
                                       .toFloat();
     ui::drawIcon (g, ui::Icon::search, searchIcon, tokens::textTertiary, tokens::iconStrokeWidth);
+
+    auto eqArea = deviceHeader.getBounds().withY (deviceHeader.getBottom() + tokens::workspaceRowHeight * 2)
+                                    .withHeight (72)
+                                    .withTrimmedLeft (tokens::workspacePadding)
+                                    .withTrimmedRight (tokens::workspacePadding);
+    g.setColour (tokens::surfaceInset.withAlpha (0.55f));
+    g.fillRoundedRectangle (eqArea.toFloat(), tokens::buttonCornerRadius);
+    g.setColour (tokens::borderSubtle.withAlpha (tokens::panelBorderAlpha));
+    g.drawRoundedRectangle (eqArea.toFloat(), tokens::buttonCornerRadius, 1.0f);
+
+    juce::Path eqCurve;
+    auto graph = eqArea.reduced (8, 10).toFloat();
+    eqCurve.startNewSubPath (graph.getX(), graph.getCentreY() + 16.0f);
+    eqCurve.cubicTo (graph.getX() + graph.getWidth() * 0.25f, graph.getY() + 20.0f,
+                     graph.getX() + graph.getWidth() * 0.45f, graph.getY() + 34.0f,
+                     graph.getX() + graph.getWidth() * 0.58f, graph.getY() + 24.0f);
+    eqCurve.cubicTo (graph.getX() + graph.getWidth() * 0.72f, graph.getY() + 8.0f,
+                     graph.getX() + graph.getWidth() * 0.84f, graph.getY() + 8.0f,
+                     graph.getRight(), graph.getCentreY() + 20.0f);
+    g.setColour (tokens::accentPrimary);
+    g.strokePath (eqCurve, juce::PathStrokeType { 1.4f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded });
 }
 
 void WorkspacePanel::resized()
@@ -339,25 +365,6 @@ void WorkspacePanel::resized()
 
     for (auto& item : browserItems)
         item.setBounds (bounds.removeFromTop (tokens::workspaceBrowserItemHeight));
-
-    bounds.removeFromTop (tokens::workspaceGap);
-    projectHeader.setBounds (bounds.removeFromTop (tokens::workspaceSectionHeaderHeight)
-                                    .withTrimmedLeft (tokens::browserIconCell));
-    tempoSlider.setBounds (bounds.removeFromTop (tokens::workspaceRowHeight));
-
-    auto projectRow = bounds.removeFromTop (tokens::workspaceRowHeight);
-    signatureBox.setBounds (projectRow.removeFromLeft (tokens::workspaceButtonWidth));
-    projectRow.removeFromLeft (tokens::workspaceSmallGap);
-    keyBox.setBounds (projectRow.removeFromLeft (tokens::workspaceLabelWidth + tokens::workspaceButtonWidth));
-
-    auto projectRowTwo = bounds.removeFromTop (tokens::workspaceRowHeight);
-    snapBox.setBounds (projectRowTwo.removeFromLeft (tokens::workspaceButtonWidth));
-    projectRowTwo.removeFromLeft (tokens::workspaceSmallGap);
-    loopButton.setBounds (projectRowTwo.removeFromLeft (tokens::workspaceButtonWidth));
-    projectRowTwo.removeFromLeft (tokens::workspaceSmallGap);
-    clickButton.setBounds (projectRowTwo.removeFromLeft (tokens::workspaceButtonWidth));
-    projectRowTwo.removeFromLeft (tokens::workspaceSmallGap);
-    recordButton.setBounds (projectRowTwo.removeFromLeft (tokens::workspaceButtonWidth));
 
     bounds.removeFromTop (tokens::workspaceGap);
     clipHeader.setBounds (bounds.removeFromTop (tokens::workspaceSectionHeaderHeight)
@@ -378,6 +385,7 @@ void WorkspacePanel::resized()
                                    .withTrimmedLeft (tokens::browserIconCell));
     selectedTrackLabel.setBounds (bounds.removeFromTop (tokens::workspaceRowHeight));
     eqButton.setBounds (bounds.removeFromTop (tokens::workspaceControlHeight).removeFromLeft (tokens::workspaceButtonWidth));
+    bounds.removeFromTop (72 + tokens::workspaceSmallGap);
 
     for (auto& slider : eqGainSliders)
         slider.setBounds (bounds.removeFromTop (tokens::workspaceRowHeight));
@@ -565,14 +573,14 @@ void WorkspacePanel::populateBrowser()
 
     const std::array<BrowserSeed, 8> items
     {
-        BrowserSeed { "Audio Files", ui::Icon::audio, tokens::trackColors[4] },
-        BrowserSeed { "MIDI Clips", ui::Icon::midi, tokens::trackColors[6] },
-        BrowserSeed { "Drums", ui::Icon::drums, tokens::trackColors[1] },
-        BrowserSeed { "Instruments", ui::Icon::keyboard, tokens::trackColors[3] },
-        BrowserSeed { "Audio Effects", ui::Icon::effects, tokens::trackColors[5] },
-        BrowserSeed { "MIDI Effects", ui::Icon::sparkle, tokens::trackColors[2] },
-        BrowserSeed { "Project Media", ui::Icon::project, tokens::textSecondary },
-        BrowserSeed { "Markers", ui::Icon::marker, tokens::accentPrimary }
+        BrowserSeed { "All                         1,234", ui::Icon::waveform, tokens::trackColors[6] },
+        BrowserSeed { "Audio                         523", ui::Icon::audio, tokens::trackColors[0] },
+        BrowserSeed { "Drums                         128", ui::Icon::drums, tokens::trackColors[1] },
+        BrowserSeed { "Instruments                   342", ui::Icon::keyboard, tokens::trackColors[2] },
+        BrowserSeed { "Effects                        89", ui::Icon::effects, tokens::trackColors[3] },
+        BrowserSeed { "Loops                         312", ui::Icon::loop, tokens::trackColors[6] },
+        BrowserSeed { "Samples                       215", ui::Icon::marker, tokens::trackColors[4] },
+        BrowserSeed { "Presets                        98", ui::Icon::project, tokens::trackColors[2] }
     };
 
     for (auto i = 0; i < static_cast<int> (browserItems.size()); ++i)

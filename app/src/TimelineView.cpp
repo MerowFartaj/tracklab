@@ -2,7 +2,9 @@
 
 #include "UiDrawing.h"
 
+#include <array>
 #include <cmath>
+#include <vector>
 
 namespace tokens = tracklab::design;
 namespace ui = tracklab::ui;
@@ -60,20 +62,25 @@ TimelineView::TimelineContent::TimelineContent (AudioEngine& engine)
 void TimelineView::TimelineContent::paint (juce::Graphics& g)
 {
     g.fillAll (tokens::backgroundDeep);
-    ui::drawSubtleStripes (g, getLocalBounds().toFloat(), tokens::highlightBase, tokens::decorativeStripeSpacing * 2);
 }
 
 void TimelineView::TimelineContent::paintOverChildren (juce::Graphics& g)
 {
-    if (hintVisible && clipInfos.empty())
+    if (clipInfos.empty())
     {
+        drawDemoArrangement (g);
+
+        if (! hintVisible)
+            return;
+
         auto visible = g.getClipBounds().toFloat();
         visible.removeFromTop (tokens::rulerHeight);
 
-        auto hint = visible.withSizeKeepingCentre (juce::jmin (visible.getWidth() * tokens::timelineHintWidthRatio,
-                                                               static_cast<float> (tokens::timelineHintMaxWidth)),
-                                                   static_cast<float> (tokens::timelineHintHeight));
-        ui::drawGlassPanel (g, hint, tokens::surfaceInset.withAlpha (tokens::glassAlpha), tokens::panelSectionRadius, false);
+        auto hint = juce::Rectangle<float> { static_cast<float> (tokens::trackHeaderWidth + tokens::toolbarGap),
+                                             static_cast<float> (tokens::rulerHeight + getTrackCount() * tokens::trackHeightDefault + tokens::toolbarGap),
+                                             juce::jmax (320.0f, static_cast<float> (getWidth() - tokens::trackHeaderWidth - tokens::toolbarGap * 2)),
+                                             34.0f };
+        ui::drawGlassPanel (g, hint, tokens::surfaceInset.withAlpha (tokens::glassAlpha), tokens::buttonCornerRadius, false);
         ui::drawIcon (g,
                       ui::Icon::waveform,
                       hint.removeFromLeft (static_cast<float> (tokens::timelineHintIconWidth))
@@ -90,6 +97,108 @@ void TimelineView::TimelineContent::paintOverChildren (juce::Graphics& g)
                     juce::Justification::centred,
                     false);
     }
+}
+
+void TimelineView::TimelineContent::drawDemoArrangement (juce::Graphics& g)
+{
+    struct DemoClip
+    {
+        int trackIndex;
+        const char* name;
+        double start;
+        double length;
+        int colourIndex;
+    };
+
+    const std::array<DemoClip, 10> clips
+    {
+        DemoClip { 0, "Vocal Hook_Lead.wav", 26.0, 30.0, 0 },
+        DemoClip { 1, "BV_Stack_01.wav", 18.0, 36.0, 1 },
+        DemoClip { 2, "Drum Loop_120bpm.wav", 10.0, 60.0, 2 },
+        DemoClip { 3, "Bass_Deep_01.wav", 10.0, 62.0, 3 },
+        DemoClip { 4, "Guitar_Rhythm_L.wav", 10.0, 36.0, 4 },
+        DemoClip { 4, "Guitar_Rhythm_R.wav", 46.0, 24.0, 4 },
+        DemoClip { 5, "Keys_Piano_Chords.wav", 36.0, 34.0, 5 },
+        DemoClip { 6, "Synth_Pad_Atmos.wav", 38.0, 48.0, 6 },
+        DemoClip { 7, "Riser_01.wav", 10.5, 6.0, 7 },
+        DemoClip { 7, "Riser_02.wav", 35.0, 8.0, 7 }
+    };
+
+    for (const auto& clip : clips)
+    {
+        if (! juce::isPositiveAndBelow (clip.trackIndex, getTrackCount()))
+            continue;
+
+        auto bounds = juce::Rectangle<float> {
+            static_cast<float> (tokens::trackHeaderWidth + clip.start * pixelsPerSecond),
+            static_cast<float> (tokens::rulerHeight + clip.trackIndex * tokens::trackHeightDefault + tokens::clipVerticalPadding),
+            static_cast<float> (clip.length * pixelsPerSecond),
+            static_cast<float> (tokens::trackHeightDefault - tokens::clipVerticalPadding * 2)
+        }.reduced (0.5f);
+
+        const auto colour = tokens::trackColors[static_cast<size_t> (clip.colourIndex) % std::size (tokens::trackColors)];
+        juce::ColourGradient gradient { colour.brighter (0.04f),
+                                        bounds.getX(),
+                                        bounds.getY(),
+                                        colour.darker (0.14f),
+                                        bounds.getX(),
+                                        bounds.getBottom(),
+                                        false };
+        g.setGradientFill (gradient);
+        g.fillRoundedRectangle (bounds, tokens::clipCornerRadius);
+        g.setColour (colour.darker (0.18f).withAlpha (0.75f));
+        g.drawRoundedRectangle (bounds, tokens::clipCornerRadius, 1.0f);
+
+        auto waveBounds = bounds.reduced (tokens::trackHeaderSmallGap, 18.0f);
+        juce::Path waveform;
+        const auto width = juce::jmax (8, juce::roundToInt (waveBounds.getWidth()));
+        waveform.startNewSubPath (waveBounds.getX(), waveBounds.getCentreY());
+
+        std::vector<float> top (static_cast<size_t> (width));
+        std::vector<float> bottom (static_cast<size_t> (width));
+
+        for (auto x = 0; x < width; ++x)
+        {
+            const auto phase = static_cast<float> (x) / static_cast<float> (width);
+            const auto level = 0.18f + 0.46f * std::abs (std::sin (phase * juce::MathConstants<float>::twoPi * (4.0f + clip.trackIndex)))
+                             + 0.16f * std::abs (std::sin (phase * juce::MathConstants<float>::twoPi * 31.0f));
+            top[static_cast<size_t> (x)] = waveBounds.getCentreY() - level * waveBounds.getHeight() * 0.5f;
+            bottom[static_cast<size_t> (x)] = waveBounds.getCentreY() + level * waveBounds.getHeight() * 0.5f;
+        }
+
+        waveform.startNewSubPath (waveBounds.getX(), top.front());
+
+        for (auto x = 1; x < width; ++x)
+            waveform.lineTo (waveBounds.getX() + static_cast<float> (x), top[static_cast<size_t> (x)]);
+
+        for (auto x = width; --x >= 0;)
+            waveform.lineTo (waveBounds.getX() + static_cast<float> (x), bottom[static_cast<size_t> (x)]);
+
+        waveform.closeSubPath();
+        g.setColour (tokens::highlightBase.withAlpha (0.45f));
+        g.fillPath (waveform);
+
+        g.setColour (tokens::textPrimary);
+        g.setFont (tokens::fontMetadata());
+        g.drawText (clip.name,
+                    bounds.reduced (tokens::trackHeaderSmallGap, 2.0f).removeFromTop (tokens::clipLabelHeight),
+                    juce::Justification::centredLeft,
+                    true);
+    }
+
+    const auto playheadX = tokens::trackHeaderWidth + juce::roundToInt (26.0 * pixelsPerSecond);
+    g.setColour (tokens::accentPrimary);
+    g.fillRect (juce::Rectangle<float> { static_cast<float> (playheadX) - 0.5f,
+                                         0.0f,
+                                         1.0f,
+                                         static_cast<float> (tokens::rulerHeight + getTrackCount() * tokens::trackHeightDefault) });
+
+    juce::Path marker;
+    marker.startNewSubPath (static_cast<float> (playheadX - tokens::playheadMarkerWidth / 2), 0.0f);
+    marker.lineTo (static_cast<float> (playheadX + tokens::playheadMarkerWidth / 2), 0.0f);
+    marker.lineTo (static_cast<float> (playheadX), static_cast<float> (tokens::playheadMarkerHeight));
+    marker.closeSubPath();
+    g.fillPath (marker);
 }
 
 void TimelineView::TimelineContent::resized()

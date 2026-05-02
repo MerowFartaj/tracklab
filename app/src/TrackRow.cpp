@@ -89,17 +89,24 @@ TrackRow::TrackRow()
 
 void TrackRow::paint (juce::Graphics& g)
 {
-    g.fillAll (tokens::backgroundDeep);
+    g.fillAll (tokens::backgroundBase);
 
     auto header = getLocalBounds().removeFromLeft (tokens::trackHeaderWidth);
     auto lane = getLocalBounds().withTrimmedLeft (tokens::trackHeaderWidth);
 
     const auto headerBounds = header.toFloat();
-    ui::drawGlassPanel (g, headerBounds.reduced (0.0f, 0.5f), tokens::surfaceElevated, 0.0f, false);
-    ui::drawSoftGlow (g,
-                      headerBounds.withWidth (tokens::trackHeaderWidth * 0.55f),
-                      trackInfo.colour,
-                      tokens::accentWashAlpha);
+    juce::ColourGradient headerGradient { tokens::surfaceChrome.brighter (0.02f),
+                                          headerBounds.getX(),
+                                          headerBounds.getY(),
+                                          tokens::surfaceInset,
+                                          headerBounds.getX(),
+                                          headerBounds.getBottom(),
+                                          false };
+    g.setGradientFill (headerGradient);
+    g.fillRect (headerBounds);
+
+    g.setColour (trackInfo.colour.withAlpha (0.08f));
+    g.fillRect (headerBounds.withWidth (tokens::trackHeaderWidth * 0.72f));
 
     g.setColour (trackInfo.colour);
     g.fillRect (header.removeFromLeft (tokens::trackColorBarWidth));
@@ -111,18 +118,20 @@ void TrackRow::paint (juce::Graphics& g)
     g.setColour (tokens::borderSubtle.withAlpha (tokens::panelBorderAlpha));
     g.drawVerticalLine (tokens::trackHeaderWidth - 1, 0.0f, static_cast<float> (getHeight()));
 
-    g.setColour (tokens::surfaceRaised.withAlpha (tokens::laneOverlayAlpha));
+    g.setColour (tokens::backgroundDeep);
     g.fillRect (lane);
-    ui::drawSubtleStripes (g, lane.toFloat(), tokens::highlightBase, tokens::decorativeStripeSpacing * 2);
+    g.setColour (tokens::highlightBase.withAlpha (0.02f));
+    g.fillRect (lane.toFloat().reduced (0.0f, 1.0f));
 
     const auto clip = g.getClipBounds();
-    const auto firstSecond = juce::jmax (0, static_cast<int> (std::floor ((clip.getX() - tokens::trackHeaderWidth) / pixelsPerSecond)));
-    const auto lastSecond = static_cast<int> (std::ceil ((clip.getRight() - tokens::trackHeaderWidth) / pixelsPerSecond));
+    const auto secondsPerBeat = tokens::secondsPerMinute / tokens::defaultTempoBpm;
+    const auto firstBeat = juce::jmax (0, static_cast<int> (std::floor ((clip.getX() - tokens::trackHeaderWidth) / pixelsPerSecond / secondsPerBeat)));
+    const auto lastBeat = static_cast<int> (std::ceil ((clip.getRight() - tokens::trackHeaderWidth) / pixelsPerSecond / secondsPerBeat));
 
-    for (auto second = firstSecond; second <= lastSecond; ++second)
+    for (auto beat = firstBeat; beat <= lastBeat; ++beat)
     {
-        const auto x = tokens::trackHeaderWidth + juce::roundToInt (second * pixelsPerSecond);
-        const auto isBar = std::fmod (static_cast<double> (second), tokens::timelineBarLineMultiple) == 0.0;
+        const auto x = tokens::trackHeaderWidth + juce::roundToInt (static_cast<double> (beat) * secondsPerBeat * pixelsPerSecond);
+        const auto isBar = beat % tokens::beatsPerBar == 0;
         g.setColour (tokens::borderSubtle.withAlpha (isBar ? tokens::gridBarAlpha : tokens::gridLineAlpha));
         g.drawVerticalLine (x, 0.0f, static_cast<float> (getHeight()));
     }

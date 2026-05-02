@@ -80,6 +80,7 @@ private:
         void ensureRowCount (int count);
         void rebuildClipViews (const std::set<int>& selectedClipIds);
         void layoutContent();
+        void drawDemoArrangement (juce::Graphics& g);
         double xToSeconds (float x) const;
 
         AudioEngine& audioEngine;

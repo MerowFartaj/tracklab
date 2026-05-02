@@ -1,11 +1,8 @@
 #include "TimelineRuler.h"
 
-#include "UiDrawing.h"
-
 #include <cmath>
 
 namespace tokens = tracklab::design;
-namespace ui = tracklab::ui;
 
 TimelineRuler::TimelineRuler()
 {
@@ -15,7 +12,7 @@ TimelineRuler::TimelineRuler()
 void TimelineRuler::paint (juce::Graphics& g)
 {
     auto bounds = getLocalBounds().toFloat();
-    juce::ColourGradient gradient { tokens::surfaceChrome,
+    juce::ColourGradient gradient { tokens::surfaceChrome.brighter (0.01f),
                                     bounds.getX(),
                                     bounds.getY(),
                                     tokens::surfaceInset,
@@ -24,34 +21,33 @@ void TimelineRuler::paint (juce::Graphics& g)
                                     false };
     g.setGradientFill (gradient);
     g.fillAll();
-    ui::drawSubtleStripes (g, bounds, tokens::highlightBase, tokens::decorativeStripeSpacing * 2);
 
+    const auto secondsPerBeat = tokens::secondsPerMinute / tokens::defaultTempoBpm;
+    const auto secondsPerBar = secondsPerBeat * tokens::beatsPerBar;
     const auto clip = g.getClipBounds();
-    const auto firstTick = juce::jmax (0, static_cast<int> (std::floor (clip.getX() / pixelsPerSecond / tokens::minorTickSeconds)));
-    const auto lastTick = static_cast<int> (std::ceil (clip.getRight() / pixelsPerSecond / tokens::minorTickSeconds));
+    const auto firstBeat = juce::jmax (0, static_cast<int> (std::floor (clip.getX() / pixelsPerSecond / secondsPerBeat)));
+    const auto lastBeat = static_cast<int> (std::ceil (clip.getRight() / pixelsPerSecond / secondsPerBeat));
 
-    for (auto tick = firstTick; tick <= lastTick; ++tick)
+    g.setColour (tokens::accentPrimary.withAlpha (0.42f));
+    g.fillRect (bounds.removeFromTop (2.0f));
+
+    for (auto beat = firstBeat; beat <= lastBeat; ++beat)
     {
-        const auto seconds = tick * tokens::minorTickSeconds;
+        const auto seconds = static_cast<double> (beat) * secondsPerBeat;
         const auto x = static_cast<float> (seconds * pixelsPerSecond);
-        const auto isMajor = juce::approximatelyEqual (std::fmod (seconds, tokens::majorTickSeconds), 0.0)
-                          || juce::approximatelyEqual (std::fmod (seconds, tokens::majorTickSeconds), tokens::majorTickSeconds);
+        const auto isBar = beat % tokens::beatsPerBar == 0;
+        const auto barNumber = beat / tokens::beatsPerBar + 1;
+        const auto isLabelledBar = (barNumber - 1) % 4 == 0;
 
-        const auto isBar = std::fmod (seconds, tokens::timelineBarLineMultiple) == 0.0;
-        g.setColour ((isMajor ? tokens::borderSubtle : tokens::textTertiary)
-                         .withAlpha (isBar ? tokens::gridBarAlpha
-                                           : (isMajor ? tokens::panelBorderAlpha : tokens::subdivisionLineAlpha)));
-        g.drawVerticalLine (juce::roundToInt (x), isMajor ? 0.0f : bounds.getHeight() * 0.55f, bounds.getBottom());
+        g.setColour (tokens::borderSubtle.withAlpha (isBar ? tokens::gridBarAlpha : tokens::subdivisionLineAlpha));
+        g.drawVerticalLine (juce::roundToInt (x), isBar ? 2.0f : getHeight() * 0.58f, static_cast<float> (getHeight()));
 
-        if (isMajor)
+        if (isLabelledBar)
         {
-            g.setColour (isBar ? tokens::textSecondary : tokens::textTertiary);
+            g.setColour (tokens::textSecondary);
             g.setFont (tokens::fontMonospace());
-            g.drawText (formatBarsBeats (seconds) + "  " + formatSeconds (seconds),
-                        juce::Rectangle<float> { x + tokens::toolbarGap,
-                                                 0.0f,
-                                                 static_cast<float> (pixelsPerSecond) - tokens::toolbarGap,
-                                                 bounds.getHeight() * 0.82f },
+            g.drawText (juce::String (barNumber),
+                        juce::Rectangle<float> { x + 4.0f, 4.0f, static_cast<float> (secondsPerBar * pixelsPerSecond), 14.0f },
                         juce::Justification::centredLeft,
                         false);
         }

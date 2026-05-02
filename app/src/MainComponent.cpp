@@ -23,6 +23,23 @@ MainComponent::MainComponent()
         loadAudioFile();
     };
 
+    toolbar.onCloseClicked = []
+    {
+        juce::JUCEApplication::getInstance()->systemRequestedQuit();
+    };
+
+    toolbar.onMinimiseClicked = [this]
+    {
+        if (auto* window = findParentComponentOfClass<juce::DocumentWindow>())
+            window->setMinimised (true);
+    };
+
+    toolbar.onZoomClicked = [this]
+    {
+        if (auto* window = findParentComponentOfClass<juce::DocumentWindow>())
+            window->setFullScreen (! window->isFullScreen());
+    };
+
     toolbar.onPlayPauseClicked = [this]
     {
         if (audioEngine->isPlaying())
@@ -295,14 +312,7 @@ void MainComponent::handleFileChosen (const juce::File& file)
         return;
     }
 
-    const auto tracks = audioEngine->getAllTrackInfo();
-
-    if (tracks.empty())
-        audioEngine->addTrack ("Track 01");
-
-    const auto targetTrackId = audioEngine->getAllTrackInfo().front().id;
-
-    if (audioEngine->addClipToTrack (targetTrackId, file, 0.0) <= 0)
+    if (! audioEngine->loadFile (file))
     {
         juce::AlertWindow::showMessageBoxAsync (juce::AlertWindow::WarningIcon,
                                                 "Could not load file",

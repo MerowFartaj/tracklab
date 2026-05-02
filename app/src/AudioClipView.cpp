@@ -20,8 +20,8 @@ void AudioClipView::paint (juce::Graphics& g)
     g.setColour (tokens::shadowBase.withAlpha (tokens::clipShadowAlpha));
     g.fillRoundedRectangle (bounds.translated (0.0f, 1.0f), tokens::clipCornerRadius);
 
-    const auto clipBase = trackColour.withMultipliedSaturation (tokens::clipSurfaceSaturation)
-                                     .withMultipliedBrightness (tokens::clipSurfaceBrightness);
+    const auto clipBase = trackColour.withMultipliedSaturation (0.92f)
+                                     .withMultipliedBrightness (0.96f);
 
     juce::ColourGradient clipGradient { clipBase.brighter (tokens::surfaceGradientAmount),
                                         bounds.getX(),
@@ -32,7 +32,6 @@ void AudioClipView::paint (juce::Graphics& g)
                                         false };
     g.setGradientFill (clipGradient);
     g.fillRoundedRectangle (bounds, tokens::clipCornerRadius);
-    ui::drawSubtleStripes (g, bounds.reduced (1.0f), tokens::highlightBase, tokens::decorativeStripeSpacing);
 
     g.setColour (tokens::highlightBase.withAlpha (tokens::clipTopHighlightAlpha));
     g.drawHorizontalLine (1, bounds.getX() + tokens::clipCornerRadius, bounds.getRight() - tokens::clipCornerRadius);
@@ -40,8 +39,8 @@ void AudioClipView::paint (juce::Graphics& g)
     if (getWidth() >= tokens::minimumReadableClipWidth && ! peaks.empty() && ! rms.empty())
     {
         auto waveformBounds = bounds.reduced (tokens::waveformPadding, tokens::waveformPadding);
-        drawWaveformLayer (g, waveformBounds, peaks, trackColour.withAlpha (tokens::waveformPeakAlpha));
-        drawWaveformLayer (g, waveformBounds, rms, trackColour.withAlpha (tokens::waveformRmsAlpha));
+        drawWaveformLayer (g, waveformBounds, peaks, tokens::highlightBase.withAlpha (0.38f));
+        drawWaveformLayer (g, waveformBounds, rms, tokens::highlightBase.withAlpha (0.58f));
     }
 
     g.setColour (selected ? tokens::accentSecondary.withAlpha (tokens::selectedClipBorderAlpha)
@@ -55,16 +54,8 @@ void AudioClipView::paint (juce::Graphics& g)
         g.drawRoundedRectangle (bounds.expanded (2.0f), tokens::clipCornerRadius + 2.0f, 1.0f);
     }
 
-    auto labelBounds = getLocalBounds().reduced (tokens::toolbarGap, 0);
+    auto labelBounds = getLocalBounds().reduced (tokens::trackHeaderSmallGap, 0);
     auto labelPill = labelBounds.removeFromTop (tokens::clipLabelHeight).toFloat();
-    g.setColour (tokens::backgroundDeep.withAlpha (tokens::glassAlpha));
-    g.fillRoundedRectangle (labelPill, tokens::clipCornerRadius);
-    ui::drawIcon (g,
-                  ui::Icon::clip,
-                  labelPill.removeFromLeft (tokens::browserIconCell).withSizeKeepingCentre (tokens::iconSizeSmall,
-                                                                                            tokens::iconSizeSmall),
-                  tokens::textPrimary.withAlpha (tokens::clipIconAlpha),
-                  tokens::iconStrokeWidth);
     g.setColour (tokens::textPrimary);
     g.setFont (tokens::fontMetadata());
     g.drawText (clipInfo.name, labelPill, juce::Justification::centredLeft, true);

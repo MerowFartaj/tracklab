@@ -4,13 +4,13 @@
 
 namespace tracklab::design
 {
-inline const juce::Colour backgroundBase  { 0xFF1C1C1E };
-inline const juce::Colour backgroundDeep  { 0xFF141517 };
-inline const juce::Colour surfaceElevated { 0xFF2A2A2C };
-inline const juce::Colour surfaceRaised   { 0xFF3A3A3C };
-inline const juce::Colour surfaceChrome   { 0xFF333437 };
-inline const juce::Colour surfaceInset    { 0xFF202124 };
-inline const juce::Colour borderSubtle    { 0xFF3F3F42 };
+inline const juce::Colour backgroundBase  { 0xFF12181C };
+inline const juce::Colour backgroundDeep  { 0xFF0D1215 };
+inline const juce::Colour surfaceElevated { 0xFF1B2429 };
+inline const juce::Colour surfaceRaised   { 0xFF273139 };
+inline const juce::Colour surfaceChrome   { 0xFF202A31 };
+inline const juce::Colour surfaceInset    { 0xFF10161A };
+inline const juce::Colour borderSubtle    { 0xFF314048 };
 inline const juce::Colour textPrimary     { 0xFFF2F2F7 };
 inline const juce::Colour textSecondary   { 0xFF98989D };
 inline const juce::Colour textTertiary    { 0xFF6C6C70 };
@@ -25,6 +25,9 @@ inline const juce::Colour warning         { 0xFFFF9F0A };
 inline const juce::Colour error           { 0xFFFF453A };
 inline const juce::Colour shadowBase      { 0xFF000000 };
 inline const juce::Colour highlightBase   { 0xFFFFFFFF };
+inline const juce::Colour trafficClose    { 0xFFFF5F57 };
+inline const juce::Colour trafficMinimise { 0xFFFFBD2E };
+inline const juce::Colour trafficZoom     { 0xFF28C840 };
 
 inline const juce::Colour trackColors[] =
 {
@@ -43,8 +46,8 @@ static constexpr int trackHeightDefault = 72;
 static constexpr int trackHeightCompact = 48;
 static constexpr int rulerHeight = 28;
 static constexpr int trackHeaderWidth = 232;
-static constexpr int mixerDefaultHeight = 240;
-static constexpr int mixerMinHeight = 160;
+static constexpr int mixerDefaultHeight = 300;
+static constexpr int mixerMinHeight = 220;
 static constexpr int mixerMaxHeight = 400;
 static constexpr int splitterHeight = 6;
 static constexpr int splitterHandleWidth = 64;
@@ -53,17 +56,17 @@ static constexpr int addTrackHeight = 36;
 static constexpr int timelineHintMaxWidth = 360;
 static constexpr int timelineHintHeight = 72;
 static constexpr int timelineHintIconWidth = 72;
-static constexpr int workspacePanelWidth = 292;
-static constexpr int workspacePanelMinWidth = 240;
-static constexpr int workspacePanelMaxWidth = 360;
+static constexpr int workspacePanelWidth = 208;
+static constexpr int workspacePanelMinWidth = 208;
+static constexpr int workspacePanelMaxWidth = 300;
 static constexpr int workspaceSectionHeaderHeight = 22;
 static constexpr int workspaceRowHeight = 24;
 static constexpr int workspaceControlHeight = 20;
 static constexpr int workspacePadding = 10;
 static constexpr int workspaceGap = 8;
 static constexpr int workspaceSmallGap = 4;
-static constexpr int workspaceLabelWidth = 64;
-static constexpr int workspaceButtonWidth = 60;
+static constexpr int workspaceLabelWidth = 50;
+static constexpr int workspaceButtonWidth = 50;
 static constexpr int workspaceBrowserItemHeight = 20;
 
 static constexpr float playheadWidth = 1.0f;
@@ -105,13 +108,13 @@ static constexpr float meterRedPoint = 0.90f;
 
 static constexpr int toolbarPaddingX = 12;
 static constexpr int toolbarButtonHeight = 28;
-static constexpr int toolbarButtonWidth = 116;
-static constexpr int toolbarSmallButtonWidth = 58;
-static constexpr int toolbarTransportButtonWidth = 68;
-static constexpr int toolbarGap = 8;
-static constexpr int toolbarPositionWidth = 198;
-static constexpr int toolbarWordmarkWidth = 126;
-static constexpr int toolbarTransportGroupWidth = 348;
+static constexpr int toolbarButtonWidth = 68;
+static constexpr int toolbarSmallButtonWidth = 42;
+static constexpr int toolbarTransportButtonWidth = 42;
+static constexpr int toolbarGap = 6;
+static constexpr int toolbarPositionWidth = 208;
+static constexpr int toolbarWordmarkWidth = 142;
+static constexpr int toolbarTransportGroupWidth = 186;
 static constexpr int toolbarPillHeight = 26;
 static constexpr int toolbarTempoWidth = 96;
 static constexpr int toolbarSignatureWidth = 52;
@@ -132,13 +135,13 @@ static constexpr int clipTrimHandleWidth = 6;
 static constexpr int clipLabelHeight = 18;
 static constexpr int clipDragSnapPixels = 3;
 
-static constexpr float timelineDefaultPixelsPerSecond = 80.0f;
+static constexpr float timelineDefaultPixelsPerSecond = 16.0f;
 static constexpr float timelineMinPixelsPerSecond = 5.0f;
 static constexpr float timelineMaxPixelsPerSecond = 500.0f;
 static constexpr float timelineHintWidthRatio = 0.62f;
 static constexpr float timelineHintSparkleStartRatio = 0.78f;
-static constexpr double timelineEmptyLengthSeconds = 30.0;
-static constexpr double timelineTrailingSeconds = 4.0;
+static constexpr double timelineEmptyLengthSeconds = 100.0;
+static constexpr double timelineTrailingSeconds = 10.0;
 static constexpr double timelineBarSnapSeconds = 2.0;
 static constexpr double timelineFineSnapSeconds = 0.25;
 static constexpr double minorTickSeconds = 0.25;
@@ -165,6 +168,9 @@ static constexpr int mixerMeterWidth = 4;
 static constexpr int mixerFaderHeight = 76;
 static constexpr int mixerReadoutHeight = 16;
 static constexpr int mixerTimerHz = 30;
+static constexpr int mixerTabsHeight = 28;
+static constexpr int demoTrackCount = 8;
+static constexpr double demoTimelineLengthSeconds = 98.0;
 
 static constexpr int iconSizeSmall = 12;
 static constexpr int iconSizeMedium = 16;

@@ -73,6 +73,21 @@ void drawIcon (juce::Graphics& g, Icon icon, juce::Rectangle<float> bounds, juce
             g.fillEllipse (r.reduced (r.getWidth() * 0.06f));
             return;
 
+        case Icon::rewind:
+            path.startNewSubPath (r.getRight(), r.getY());
+            path.lineTo (r.getCentreX(), r.getCentreY());
+            path.lineTo (r.getRight(), r.getBottom());
+            path.closeSubPath();
+            g.setColour (colour);
+            g.fillPath (path);
+            path.clear();
+            path.startNewSubPath (r.getCentreX(), r.getY());
+            path.lineTo (r.getX(), r.getCentreY());
+            path.lineTo (r.getCentreX(), r.getBottom());
+            path.closeSubPath();
+            g.fillPath (path);
+            return;
+
         case Icon::folder:
             path.startNewSubPath (r.getX(), r.getY() + r.getHeight() * 0.25f);
             path.lineTo (r.getX() + r.getWidth() * 0.34f, r.getY() + r.getHeight() * 0.25f);
@@ -89,6 +104,21 @@ void drawIcon (juce::Graphics& g, Icon icon, juce::Rectangle<float> bounds, juce
             g.drawEllipse (r.removeFromLeft (r.getWidth() * 0.72f).removeFromTop (r.getHeight() * 0.72f), strokeWidth);
             path.startNewSubPath (bounds.getCentreX() + bounds.getWidth() * 0.10f, bounds.getCentreY() + bounds.getHeight() * 0.10f);
             path.lineTo (bounds.getRight() - bounds.getWidth() * 0.18f, bounds.getBottom() - bounds.getHeight() * 0.18f);
+            strokePath (g, path, colour, strokeWidth);
+            return;
+
+        case Icon::speaker:
+            path.startNewSubPath (r.getX(), r.getY() + r.getHeight() * 0.38f);
+            path.lineTo (r.getX() + r.getWidth() * 0.28f, r.getY() + r.getHeight() * 0.38f);
+            path.lineTo (r.getX() + r.getWidth() * 0.52f, r.getY() + r.getHeight() * 0.18f);
+            path.lineTo (r.getX() + r.getWidth() * 0.52f, r.getBottom() - r.getHeight() * 0.18f);
+            path.lineTo (r.getX() + r.getWidth() * 0.28f, r.getBottom() - r.getHeight() * 0.38f);
+            path.lineTo (r.getX(), r.getBottom() - r.getHeight() * 0.38f);
+            path.closeSubPath();
+            strokePath (g, path, colour, strokeWidth);
+            path.clear();
+            path.startNewSubPath (r.getX() + r.getWidth() * 0.66f, r.getY() + r.getHeight() * 0.34f);
+            path.quadraticTo (r.getRight(), r.getCentreY(), r.getX() + r.getWidth() * 0.66f, r.getBottom() - r.getHeight() * 0.34f);
             strokePath (g, path, colour, strokeWidth);
             return;
 
@@ -198,6 +228,21 @@ void drawIcon (juce::Graphics& g, Icon icon, juce::Rectangle<float> bounds, juce
             g.setColour (colour);
             g.drawRoundedRectangle (r, 2.0f, strokeWidth);
             g.drawHorizontalLine (juce::roundToInt (r.getY() + r.getHeight() * 0.35f), r.getX(), r.getRight());
+            return;
+
+        case Icon::settings:
+            g.setColour (colour);
+            g.drawEllipse (r.reduced (r.getWidth() * 0.22f), strokeWidth);
+            for (auto i = 0; i < 8; ++i)
+            {
+                const auto angle = juce::MathConstants<float>::twoPi * static_cast<float> (i) / 8.0f;
+                const auto inner = juce::Point<float> { r.getCentreX() + std::cos (angle) * r.getWidth() * 0.34f,
+                                                        r.getCentreY() + std::sin (angle) * r.getHeight() * 0.34f };
+                const auto outer = juce::Point<float> { r.getCentreX() + std::cos (angle) * r.getWidth() * 0.48f,
+                                                        r.getCentreY() + std::sin (angle) * r.getHeight() * 0.48f };
+                g.drawLine ({ inner, outer }, strokeWidth);
+            }
+            g.fillEllipse (r.withSizeKeepingCentre (r.getWidth() * 0.18f, r.getHeight() * 0.18f));
             return;
 
         default:
