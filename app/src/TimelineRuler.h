@@ -20,9 +20,6 @@ public:
     std::function<void(const juce::MouseEvent&, const juce::MouseWheelDetails&)> onMouseWheel;
 
 private:
-    static juce::String formatSeconds (double seconds);
-    static juce::String formatBarsBeats (double seconds);
-
     double lengthSeconds = tracklab::design::timelineEmptyLengthSeconds;
     double pixelsPerSecond = tracklab::design::timelineDefaultPixelsPerSecond;
 

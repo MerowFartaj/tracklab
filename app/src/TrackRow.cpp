@@ -123,16 +123,37 @@ void TrackRow::paint (juce::Graphics& g)
     g.setColour (tokens::highlightBase.withAlpha (0.02f));
     g.fillRect (lane.toFloat().reduced (0.0f, 1.0f));
 
-    const auto clip = g.getClipBounds();
     const auto secondsPerBeat = tokens::secondsPerMinute / tokens::defaultTempoBpm;
-    const auto firstBeat = juce::jmax (0, static_cast<int> (std::floor ((clip.getX() - tokens::trackHeaderWidth) / pixelsPerSecond / secondsPerBeat)));
-    const auto lastBeat = static_cast<int> (std::ceil ((clip.getRight() - tokens::trackHeaderWidth) / pixelsPerSecond / secondsPerBeat));
+    const auto secondsPerSixteenth = secondsPerBeat / tokens::sixteenthsPerBeat;
+    const auto pixelsPerBeat = pixelsPerSecond * secondsPerBeat;
+    const auto pixelsPerSixteenth = pixelsPerBeat / tokens::sixteenthsPerBeat;
+    const auto shouldDrawBeatLines = pixelsPerBeat >= tokens::rulerBeatTickMinPixels;
+    const auto shouldDrawSixteenthLines = pixelsPerSixteenth >= tokens::rulerSixteenthTickMinPixels;
+    const auto laneStartX = static_cast<float> (tokens::trackHeaderWidth);
+    const auto clip = g.getClipBounds();
+    const auto visibleStartSeconds = juce::jmax (0.0, (clip.getX() - laneStartX) / pixelsPerSecond);
+    const auto visibleEndSeconds = juce::jmax (0.0, (clip.getRight() - laneStartX) / pixelsPerSecond);
+    const auto firstSixteenth = juce::jmax (0, static_cast<int> (std::floor (visibleStartSeconds / secondsPerSixteenth)));
+    const auto lastSixteenth = static_cast<int> (std::ceil (visibleEndSeconds / secondsPerSixteenth));
 
-    for (auto beat = firstBeat; beat <= lastBeat; ++beat)
+    for (auto sixteenth = firstSixteenth; sixteenth <= lastSixteenth; ++sixteenth)
     {
-        const auto x = tokens::trackHeaderWidth + juce::roundToInt (static_cast<double> (beat) * secondsPerBeat * pixelsPerSecond);
-        const auto isBar = beat % tokens::beatsPerBar == 0;
-        g.setColour (tokens::borderSubtle.withAlpha (isBar ? tokens::gridBarAlpha : tokens::gridLineAlpha));
+        const auto beat = sixteenth / tokens::sixteenthsPerBeat;
+        const auto sixteenthInBeat = sixteenth % tokens::sixteenthsPerBeat;
+        const auto isBeat = sixteenthInBeat == 0;
+        const auto isBar = isBeat && beat % tokens::beatsPerBar == 0;
+
+        if (! isBar && isBeat && ! shouldDrawBeatLines)
+            continue;
+
+        if (! isBar && ! isBeat && ! shouldDrawSixteenthLines)
+            continue;
+
+        const auto x = tokens::trackHeaderWidth + juce::roundToInt (static_cast<double> (sixteenth) * secondsPerSixteenth * pixelsPerSecond);
+        const auto lineAlpha = isBar ? tokens::gridBarAlpha
+                           : isBeat ? tokens::beatLineAlpha
+                                    : tokens::subdivisionLineAlpha * 0.70f;
+        g.setColour (tokens::borderSubtle.withAlpha (lineAlpha));
         g.drawVerticalLine (x, 0.0f, static_cast<float> (getHeight()));
     }
 

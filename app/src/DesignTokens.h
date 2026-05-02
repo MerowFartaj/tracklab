@@ -148,6 +148,21 @@ static constexpr double minorTickSeconds = 0.25;
 static constexpr double majorTickSeconds = 1.0;
 static constexpr double defaultTempoBpm = 120.0;
 static constexpr int beatsPerBar = 4;
+static constexpr int sixteenthsPerBeat = 4;
+
+static constexpr float rulerAmberRailAlpha = 0.48f;
+static constexpr float rulerLabelMinGap = 26.0f;
+static constexpr float rulerLabelInset = 4.0f;
+static constexpr float rulerBarLabelWidth = 34.0f;
+static constexpr float rulerBeatLabelWidth = 44.0f;
+static constexpr float rulerSixteenthLabelWidth = 58.0f;
+static constexpr float rulerBeatTickMinPixels = 8.0f;
+static constexpr float rulerBeatLabelMinPixels = 34.0f;
+static constexpr float rulerSixteenthTickMinPixels = 6.0f;
+static constexpr float rulerSixteenthLabelMinPixels = 28.0f;
+static constexpr float rulerBarTickTop = 2.0f;
+static constexpr float rulerBeatTickTopRatio = 0.48f;
+static constexpr float rulerSixteenthTickTopRatio = 0.68f;
 
 static constexpr int playheadMarkerWidth = 6;
 static constexpr int playheadMarkerHeight = 8;

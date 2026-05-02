@@ -4,6 +4,89 @@
 
 namespace tokens = tracklab::design;
 
+namespace
+{
+struct RulerScale
+{
+    int labelEveryBars = 4;
+    bool showBeatTicks = true;
+    bool showBeatLabels = false;
+    bool showSixteenthTicks = false;
+    bool showSixteenthLabels = false;
+};
+
+double getSecondsPerBeat()
+{
+    return tokens::secondsPerMinute / tokens::defaultTempoBpm;
+}
+
+double getSecondsPerSixteenth()
+{
+    return getSecondsPerBeat() / tokens::sixteenthsPerBeat;
+}
+
+RulerScale getRulerScale (double pixelsPerSecond)
+{
+    const auto pixelsPerBeat = pixelsPerSecond * getSecondsPerBeat();
+    const auto pixelsPerBar = pixelsPerBeat * tokens::beatsPerBar;
+    const auto pixelsPerSixteenth = pixelsPerBeat / tokens::sixteenthsPerBeat;
+
+    RulerScale scale;
+
+    if (pixelsPerBar < 18.0)
+        scale.labelEveryBars = 16;
+    else if (pixelsPerBar < 28.0)
+        scale.labelEveryBars = 8;
+    else if (pixelsPerBar < 60.0)
+        scale.labelEveryBars = 4;
+    else if (pixelsPerBar < 110.0)
+        scale.labelEveryBars = 2;
+    else
+        scale.labelEveryBars = 1;
+
+    scale.showBeatTicks = pixelsPerBeat >= tokens::rulerBeatTickMinPixels;
+    scale.showBeatLabels = pixelsPerBeat >= tokens::rulerBeatLabelMinPixels;
+    scale.showSixteenthTicks = pixelsPerSixteenth >= tokens::rulerSixteenthTickMinPixels;
+    scale.showSixteenthLabels = pixelsPerSixteenth >= tokens::rulerSixteenthLabelMinPixels;
+
+    return scale;
+}
+
+juce::String getBarLabel (int barIndex)
+{
+    return juce::String (barIndex + 1);
+}
+
+juce::String getBeatLabel (int barIndex, int beatInBar)
+{
+    return juce::String (barIndex + 1) + "." + juce::String (beatInBar + 1);
+}
+
+juce::String getSixteenthLabel (int barIndex, int beatInBar, int sixteenthInBeat)
+{
+    return getBeatLabel (barIndex, beatInBar) + "." + juce::String (sixteenthInBeat + 1);
+}
+
+bool drawLabelIfRoom (juce::Graphics& g,
+                      juce::String label,
+                      float x,
+                      float width,
+                      float& lastLabelRight)
+{
+    const auto labelX = x + tokens::rulerLabelInset;
+
+    if (labelX < lastLabelRight + tokens::rulerLabelMinGap)
+        return false;
+
+    g.drawText (label,
+                juce::Rectangle<float> { labelX, 5.0f, width, 14.0f },
+                juce::Justification::centredLeft,
+                false);
+    lastLabelRight = labelX + width;
+    return true;
+}
+}
+
 TimelineRuler::TimelineRuler()
 {
     setWantsKeyboardFocus (false);
@@ -22,34 +105,63 @@ void TimelineRuler::paint (juce::Graphics& g)
     g.setGradientFill (gradient);
     g.fillAll();
 
-    const auto secondsPerBeat = tokens::secondsPerMinute / tokens::defaultTempoBpm;
-    const auto secondsPerBar = secondsPerBeat * tokens::beatsPerBar;
+    const auto secondsPerSixteenth = getSecondsPerSixteenth();
+    const auto scale = getRulerScale (pixelsPerSecond);
     const auto clip = g.getClipBounds();
-    const auto firstBeat = juce::jmax (0, static_cast<int> (std::floor (clip.getX() / pixelsPerSecond / secondsPerBeat)));
-    const auto lastBeat = static_cast<int> (std::ceil (clip.getRight() / pixelsPerSecond / secondsPerBeat));
+    const auto firstSixteenth = juce::jmax (0, static_cast<int> (std::floor (clip.getX() / pixelsPerSecond / secondsPerSixteenth)));
+    const auto lastSixteenth = static_cast<int> (std::ceil (clip.getRight() / pixelsPerSecond / secondsPerSixteenth));
 
-    g.setColour (tokens::accentPrimary.withAlpha (0.42f));
+    g.setColour (tokens::accentPrimary.withAlpha (tokens::rulerAmberRailAlpha));
     g.fillRect (bounds.removeFromTop (2.0f));
+    g.setFont (tokens::fontMonospace());
 
-    for (auto beat = firstBeat; beat <= lastBeat; ++beat)
+    auto lastLabelRight = -tokens::rulerLabelMinGap;
+
+    for (auto sixteenth = firstSixteenth; sixteenth <= lastSixteenth; ++sixteenth)
     {
-        const auto seconds = static_cast<double> (beat) * secondsPerBeat;
+        const auto beat = sixteenth / tokens::sixteenthsPerBeat;
+        const auto sixteenthInBeat = sixteenth % tokens::sixteenthsPerBeat;
+        const auto beatInBar = beat % tokens::beatsPerBar;
+        const auto barIndex = beat / tokens::beatsPerBar;
+        const auto isBeat = sixteenthInBeat == 0;
+        const auto isBar = isBeat && beatInBar == 0;
+
+        if (! isBar && isBeat && ! scale.showBeatTicks)
+            continue;
+
+        if (! isBar && ! isBeat && ! scale.showSixteenthTicks)
+            continue;
+
+        const auto seconds = static_cast<double> (sixteenth) * secondsPerSixteenth;
         const auto x = static_cast<float> (seconds * pixelsPerSecond);
-        const auto isBar = beat % tokens::beatsPerBar == 0;
-        const auto barNumber = beat / tokens::beatsPerBar + 1;
-        const auto isLabelledBar = (barNumber - 1) % 4 == 0;
+        const auto tickTop = isBar ? tokens::rulerBarTickTop
+                         : isBeat ? getHeight() * tokens::rulerBeatTickTopRatio
+                                  : getHeight() * tokens::rulerSixteenthTickTopRatio;
+        const auto tickAlpha = isBar ? tokens::gridBarAlpha
+                           : isBeat ? tokens::beatLineAlpha
+                                    : tokens::subdivisionLineAlpha * 0.72f;
 
-        g.setColour (tokens::borderSubtle.withAlpha (isBar ? tokens::gridBarAlpha : tokens::subdivisionLineAlpha));
-        g.drawVerticalLine (juce::roundToInt (x), isBar ? 2.0f : getHeight() * 0.58f, static_cast<float> (getHeight()));
+        g.setColour (tokens::borderSubtle.withAlpha (tickAlpha));
+        g.drawVerticalLine (juce::roundToInt (x), tickTop, static_cast<float> (getHeight()));
 
-        if (isLabelledBar)
+        if (isBar && barIndex % scale.labelEveryBars == 0)
         {
             g.setColour (tokens::textSecondary);
-            g.setFont (tokens::fontMonospace());
-            g.drawText (juce::String (barNumber),
-                        juce::Rectangle<float> { x + 4.0f, 4.0f, static_cast<float> (secondsPerBar * pixelsPerSecond), 14.0f },
-                        juce::Justification::centredLeft,
-                        false);
+            drawLabelIfRoom (g, getBarLabel (barIndex), x, tokens::rulerBarLabelWidth, lastLabelRight);
+        }
+        else if (isBeat && scale.showBeatLabels)
+        {
+            g.setColour (tokens::textTertiary);
+            drawLabelIfRoom (g, getBeatLabel (barIndex, beatInBar), x, tokens::rulerBeatLabelWidth, lastLabelRight);
+        }
+        else if (scale.showSixteenthLabels)
+        {
+            g.setColour (tokens::textTertiary.withAlpha (0.82f));
+            drawLabelIfRoom (g,
+                             getSixteenthLabel (barIndex, beatInBar, sixteenthInBeat),
+                             x,
+                             tokens::rulerSixteenthLabelWidth,
+                             lastLabelRight);
         }
     }
 
@@ -79,23 +191,4 @@ void TimelineRuler::setPixelsPerSecond (double newPixelsPerSecond)
 {
     pixelsPerSecond = newPixelsPerSecond;
     repaint();
-}
-
-juce::String TimelineRuler::formatSeconds (double seconds)
-{
-    const auto totalMilliseconds = juce::jmax (0, juce::roundToInt (seconds * tokens::millisecondsPerSecond));
-    const auto minutes = totalMilliseconds / tokens::millisecondsPerMinute;
-    const auto secondsPart = (totalMilliseconds / tokens::millisecondsPerSecond) % tokens::secondsPerMinute;
-
-    return juce::String::formatted ("%02d:%02d", minutes, secondsPart);
-}
-
-juce::String TimelineRuler::formatBarsBeats (double seconds)
-{
-    const auto secondsPerBeat = tokens::secondsPerMinute / tokens::defaultTempoBpm;
-    const auto totalBeats = juce::jmax (0, static_cast<int> (std::floor (seconds / secondsPerBeat)));
-    const auto bar = totalBeats / tokens::beatsPerBar + 1;
-    const auto beat = totalBeats % tokens::beatsPerBar + 1;
-
-    return juce::String::formatted ("%d.%d", bar, beat);
 }
